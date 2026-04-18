@@ -531,7 +531,6 @@ private:
         node.SetKeyCount(key_count - 1);
         
         // TODO: WAL hook - LogPageModification(leaf_page_id);
-        // TODO: UpdatePageLSN(page);
         
         buffer_pool_->UnpinPage(leaf_page_id, true);
         
