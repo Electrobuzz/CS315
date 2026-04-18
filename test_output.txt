@@ -1,1 +1,141 @@
-Test started
+=== B+ Tree Comprehensive Test Suite ===
+Starting test...
+
+=== Test: Ascending Inserts ===
+  Inserted 100 keys in ascending order
+  All keys verified searchable
+  Tree structure validated
+  Non-existent keys correctly not found
+  ✅ PASS
+
+=== Test: Descending Inserts ===
+  Inserted 100 keys in descending order
+  All keys verified searchable
+  Tree structure validated
+  ✅ PASS
+
+=== Test: Random Inserts (1000 keys) ===
+  Inserted 1000 random keys
+  All keys verified searchable
+  Tree structure validated
+  ✅ PASS
+
+=== Test: Deep Tree (100000 keys for height >= 3) ===
+  Inserted 100000 keys
+  Tree height: 3
+  Tree height >= 3 verified
+  All keys verified searchable
+  Tree structure validated
+  ✅ PASS
+
+=== Test: Small Range Scan ===
+  Inserted 100 keys
+  Range scan returned 26 results
+  Range scan verified: keys 25-50 with correct RIDs
+  ✅ PASS
+
+=== Test: Full Range Scan ===
+  Inserted 200 keys
+  Range scan returned 200 results
+  Full range scan verified: all 200 keys in sorted order
+  ✅ PASS
+
+=== Test: Cross-Leaf Range Scan ===
+  Inserted 500 keys
+  Range scan returned 201 results
+  Cross-leaf range scan verified: 201 keys across multiple leaves
+  ✅ PASS
+
+=== Test: Single-Key Range (Exact Match) ===
+  Inserted 100 keys
+  Range scan returned 1 results
+  Single-key range verified: key 50 with correct RID
+  ✅ PASS
+
+=== Test: Empty Range (Outside Data) ===
+  Inserted 100 keys (max key = 100)
+  Range scan returned 0 results
+  Empty range verified: no garbage reads
+  ✅ PASS
+
+=== Test: Reverse Range (Invalid Input) ===
+  Inserted 100 keys
+  Range scan returned 0 results
+  Reverse range verified: no crash, empty result
+  ✅ PASS
+
+=== Test: Boundary Split Case ===
+  Inserted 256 keys (forces leaf split)
+  Range scan for split key 128 returned 1 results
+  Boundary split verified: split key 128 not lost during split
+  ✅ PASS
+
+=== Test: First Leaf Edge ===
+  Inserted 100 keys
+  Range scan [1, 10] returned 10 results
+  First leaf edge verified: keys 1-10 in sorted order
+  ✅ PASS
+
+=== Test: Last Leaf Edge ===
+  Inserted 100 keys
+  Range scan [90, 100] returned 11 results
+  Last leaf edge verified: keys 90-100 in sorted order
+  ✅ PASS
+
+=== Test: Random Range Queries (100 iterations) ===
+  Inserted 1000 keys
+  Random range queries: 100 passed, 0 failed
+  All random range queries passed
+  ✅ PASS
+
+=== Test: Basic Delete (no underflow) ===
+  Inserted 100 keys
+  Deleted key 50
+  Key 50 verified deleted
+  All other keys verified present
+  Range scan verified: 99 keys after deletion
+  ✅ PASS
+
+=== Test: Sequential Delete (1000 keys) ===
+  Inserted 1000 keys
+  FAIL: Failed to delete key 129
+  ❌ FAIL
+
+=== Test: Reverse Delete (descending order) ===
+  Inserted 500 keys
+  Deleted all 500 keys in descending order
+  All keys verified deleted
+  ✅ PASS
+
+=== Test: Random Delete ===
+  Inserted 500 keys
+  FAIL: Failed to delete key 230
+  ❌ FAIL
+
+=== Test: Delete + Reinsert ===
+  Inserted 200 keys
+  Deleted 100 keys (1-100)
+  Reinserted 100 keys with new RIDs
+  All keys verified with correct RIDs
+  ✅ PASS
+
+=== Test: Full Delete ===
+  Inserted 100 keys
+  Deleted all 100 keys
+  Range scan verified empty
+  All searches correctly fail
+  ✅ PASS
+
+=== Test: Range Scan After Heavy Deletes ===
+  Inserted 1000 keys
+  Deleted 491 random keys
+  Range scan returned 509 results
+  Results verified sorted
+  FAIL: Key 219 was deleted but still found
+  ❌ FAIL
+
+=== Test Summary ===
+Total: 21
+Passed: 18
+Failed: 3
+Success Rate: 85.7143%

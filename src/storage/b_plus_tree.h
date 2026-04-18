@@ -350,6 +350,16 @@ public:
         return true;
     }
     
+    // Delete a key from the B+ Tree
+    // Returns true if key was found and deleted, false otherwise
+    bool Delete(uint64_t key) {
+        if (root_page_id_ == INVALID_PAGE_ID) {
+            return false;
+        }
+        
+        return DeleteInternal(key);
+    }
+    
     // Search for a key in the B+ Tree
     // Returns true if found, and sets rid to the record location
     bool Search(uint64_t key, RID& rid) {
@@ -450,6 +460,598 @@ private:
         if (log_manager_) {
             // TODO: Update page LSN after modification
         }
+    }
+    
+    // Delete a key from the B+ Tree (internal implementation)
+    bool DeleteInternal(uint64_t key) {
+        uint32_t current_page_id = root_page_id_;
+        std::vector<uint32_t> path;
+        
+        // Traverse to the leaf node containing the key
+        while (true) {
+            path.push_back(current_page_id);
+            
+            Page* page = buffer_pool_->FetchPage(current_page_id);
+            if (!page) {
+                return false;
+            }
+            
+            BPlusTreeNode node(page);
+            
+            if (node.IsLeaf()) {
+                buffer_pool_->UnpinPage(current_page_id, false);
+                
+                // Delete from leaf with underflow handling
+                return DeleteFromLeaf(current_page_id, key, path);
+            } else {
+                uint32_t child_page_id = FindChild(node, key);
+                buffer_pool_->UnpinPage(current_page_id, false);
+                if (child_page_id == INVALID_PAGE_ID) {
+                    return false; // Key not found
+                }
+                current_page_id = child_page_id;
+            }
+        }
+    }
+    
+    // Delete a key from a leaf node (basic implementation, no underflow handling)
+    bool DeleteFromLeaf(uint32_t leaf_page_id, uint64_t key, const std::vector<uint32_t>& path) {
+        Page* page = buffer_pool_->FetchPage(leaf_page_id);
+        if (!page) {
+            return false;
+        }
+        
+        BPlusTreeNode node(page);
+        
+        uint16_t key_count = node.GetKeyCount();
+        
+        // Find the key
+        uint16_t key_index = 0;
+        bool found = false;
+        for (uint16_t i = 0; i < key_count; i++) {
+            if (node.GetKey(i) == key) {
+                key_index = i;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            buffer_pool_->UnpinPage(leaf_page_id, false);
+            return false; // Key not found
+        }
+        
+        // Shift keys and RIDs to remove the deleted key
+        for (uint16_t i = key_index; i < key_count - 1; i++) {
+            node.SetKey(i, node.GetKey(i + 1));
+            node.SetRID(i, node.GetRID(i + 1));
+        }
+        
+        // Decrease key count
+        node.SetKeyCount(key_count - 1);
+        
+        // TODO: WAL hook - LogPageModification(leaf_page_id);
+        // TODO: UpdatePageLSN(page);
+        
+        buffer_pool_->UnpinPage(leaf_page_id, true);
+        
+        // Check for underflow and try to fix it
+        if (path.size() > 1) { // Not the root
+            Page* check_page = buffer_pool_->FetchPage(leaf_page_id);
+            if (check_page) {
+                BPlusTreeNode check_node(check_page);
+                if (IsNodeUnderflowed(check_node)) {
+                    buffer_pool_->UnpinPage(leaf_page_id, false);
+                    uint32_t parent_page_id = path[path.size() - 2];
+                    if (!TryRedistribute(leaf_page_id, parent_page_id)) {
+                        // Redistribution failed, try merge
+                        if (!TryMerge(leaf_page_id, parent_page_id)) {
+                            // Merge failed (shouldn't happen with proper implementation)
+                            // For now, return true (delete succeeded, but underflow not fixed)
+                        } else {
+                            // Merge succeeded, check if parent underflows and fix recursively
+                            FixParentUnderflow(parent_page_id, path);
+                        }
+                    }
+                } else {
+                    buffer_pool_->UnpinPage(leaf_page_id, false);
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    // Check if a node is underflowed
+    bool IsNodeUnderflowed(BPlusTreeNode& node) {
+        uint16_t key_count = node.GetKeyCount();
+        
+        if (node.IsLeaf()) {
+            uint32_t max_keys = BPlusTreeNode::GetMaxLeafKeys();
+            uint32_t min_keys = (max_keys + 1) / 2; // ceil(max_keys / 2)
+            return key_count < min_keys;
+        } else {
+            uint32_t max_keys = BPlusTreeNode::GetMaxInternalKeys();
+            uint32_t min_keys = (max_keys + 1) / 2; // ceil(max_keys / 2)
+            return key_count < min_keys;
+        }
+    }
+    
+    // Find the left sibling of a node
+    // Returns page_id of left sibling, or INVALID_PAGE_ID if none exists
+    uint32_t FindLeftSibling(uint32_t parent_page_id, uint32_t child_page_id) {
+        Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+        if (!parent_page) {
+            return INVALID_PAGE_ID;
+        }
+        
+        BPlusTreeNode parent_node(parent_page);
+        uint16_t key_count = parent_node.GetKeyCount();
+        
+        // Find the index of child_page_id in parent's children
+        uint16_t child_index = 0;
+        for (uint16_t i = 0; i <= key_count; i++) {
+            if (parent_node.GetChildPageId(i) == child_page_id) {
+                child_index = i;
+                break;
+            }
+        }
+        
+        uint32_t left_sibling_id = INVALID_PAGE_ID;
+        if (child_index > 0) {
+            left_sibling_id = parent_node.GetChildPageId(child_index - 1);
+        }
+        
+        buffer_pool_->UnpinPage(parent_page_id, false);
+        return left_sibling_id;
+    }
+    
+    // Find the right sibling of a node
+    // Returns page_id of right sibling, or INVALID_PAGE_ID if none exists
+    uint32_t FindRightSibling(uint32_t parent_page_id, uint32_t child_page_id) {
+        Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+        if (!parent_page) {
+            return INVALID_PAGE_ID;
+        }
+        
+        BPlusTreeNode parent_node(parent_page);
+        uint16_t key_count = parent_node.GetKeyCount();
+        
+        // Find the index of child_page_id in parent's children
+        uint16_t child_index = 0;
+        for (uint16_t i = 0; i <= key_count; i++) {
+            if (parent_node.GetChildPageId(i) == child_page_id) {
+                child_index = i;
+                break;
+            }
+        }
+        
+        uint32_t right_sibling_id = INVALID_PAGE_ID;
+        if (child_index < key_count) {
+            right_sibling_id = parent_node.GetChildPageId(child_index + 1);
+        }
+        
+        buffer_pool_->UnpinPage(parent_page_id, false);
+        return right_sibling_id;
+    }
+    
+    // Check if a sibling has enough keys to borrow (more than minimum)
+    bool CanBorrowFromSibling(BPlusTreeNode& sibling) {
+        uint16_t key_count = sibling.GetKeyCount();
+        
+        if (sibling.IsLeaf()) {
+            uint32_t max_keys = BPlusTreeNode::GetMaxLeafKeys();
+            uint32_t min_keys = (max_keys + 1) / 2;
+            return key_count > min_keys;
+        } else {
+            uint32_t max_keys = BPlusTreeNode::GetMaxInternalKeys();
+            uint32_t min_keys = (max_keys + 1) / 2;
+            return key_count > min_keys;
+        }
+    }
+    
+    // Try to redistribute (borrow) from a sibling
+    // Returns true if redistribution was successful
+    bool TryRedistribute(uint32_t node_page_id, uint32_t parent_page_id) {
+        Page* node_page = buffer_pool_->FetchPage(node_page_id);
+        if (!node_page) {
+            return false;
+        }
+        
+        BPlusTreeNode node(node_page);
+        
+        // Try left sibling first
+        uint32_t left_sibling_id = FindLeftSibling(parent_page_id, node_page_id);
+        if (left_sibling_id != INVALID_PAGE_ID) {
+            Page* left_sibling_page = buffer_pool_->FetchPage(left_sibling_id);
+            if (left_sibling_page) {
+                BPlusTreeNode left_sibling(left_sibling_page);
+                if (CanBorrowFromSibling(left_sibling)) {
+                    // Borrow from left sibling
+                    if (node.IsLeaf()) {
+                        RedistributeFromLeftLeaf(node, left_sibling, node_page_id, left_sibling_id, parent_page_id);
+                        buffer_pool_->UnpinPage(left_sibling_id, true);
+                        buffer_pool_->UnpinPage(node_page_id, true);
+                        return true;
+                    }
+                    buffer_pool_->UnpinPage(left_sibling_id, false);
+                }
+                buffer_pool_->UnpinPage(left_sibling_id, false);
+            }
+        }
+        
+        // Try right sibling
+        uint32_t right_sibling_id = FindRightSibling(parent_page_id, node_page_id);
+        if (right_sibling_id != INVALID_PAGE_ID) {
+            Page* right_sibling_page = buffer_pool_->FetchPage(right_sibling_id);
+            if (right_sibling_page) {
+                BPlusTreeNode right_sibling(right_sibling_page);
+                if (CanBorrowFromSibling(right_sibling)) {
+                    // Borrow from right sibling
+                    if (node.IsLeaf()) {
+                        RedistributeFromRightLeaf(node, right_sibling, node_page_id, right_sibling_id, parent_page_id);
+                        buffer_pool_->UnpinPage(right_sibling_id, true);
+                        buffer_pool_->UnpinPage(node_page_id, true);
+                        return true;
+                    }
+                    buffer_pool_->UnpinPage(right_sibling_id, false);
+                }
+                buffer_pool_->UnpinPage(right_sibling_id, false);
+            }
+        }
+        
+        buffer_pool_->UnpinPage(node_page_id, false);
+        return false;
+    }
+    
+    // Redistribute from left sibling for leaf nodes
+    void RedistributeFromLeftLeaf(BPlusTreeNode& node, BPlusTreeNode& left_sibling,
+                                  uint32_t node_page_id, uint32_t left_sibling_id,
+                                  uint32_t parent_page_id) {
+        // Move last key from left sibling to beginning of node
+        uint16_t left_key_count = left_sibling.GetKeyCount();
+        uint16_t node_key_count = node.GetKeyCount();
+        
+        // Shift all keys in node to the right by 1
+        for (uint16_t i = node_key_count; i > 0; i--) {
+            node.SetKey(i, node.GetKey(i - 1));
+            node.SetRID(i, node.GetRID(i - 1));
+        }
+        
+        // Move last key from left sibling to node[0]
+        node.SetKey(0, left_sibling.GetKey(left_key_count - 1));
+        node.SetRID(0, left_sibling.GetRID(left_key_count - 1));
+        
+        // Update key counts
+        node.SetKeyCount(node_key_count + 1);
+        left_sibling.SetKeyCount(left_key_count - 1);
+        
+        // Update parent separator key (the key at index child_index in parent)
+        Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+        if (parent_page) {
+            BPlusTreeNode parent(parent_page);
+            uint16_t key_count = parent.GetKeyCount();
+            for (uint16_t i = 0; i < key_count; i++) {
+                if (parent.GetChildPageId(i + 1) == node_page_id) {
+                    parent.SetKey(i, node.GetKey(0)); // Update separator to new first key
+                    break;
+                }
+            }
+            buffer_pool_->UnpinPage(parent_page_id, true);
+        }
+    }
+    
+    // Redistribute from right sibling for leaf nodes
+    void RedistributeFromRightLeaf(BPlusTreeNode& node, BPlusTreeNode& right_sibling,
+                                   uint32_t node_page_id, uint32_t right_sibling_id,
+                                   uint32_t parent_page_id) {
+        // Move first key from right sibling to end of node
+        uint16_t node_key_count = node.GetKeyCount();
+        
+        // Move first key from right sibling to end of node
+        node.SetKey(node_key_count, right_sibling.GetKey(0));
+        node.SetRID(node_key_count, right_sibling.GetRID(0));
+        
+        // Shift all keys in right sibling to the left by 1
+        uint16_t right_key_count = right_sibling.GetKeyCount();
+        for (uint16_t i = 0; i < right_key_count - 1; i++) {
+            right_sibling.SetKey(i, right_sibling.GetKey(i + 1));
+            right_sibling.SetRID(i, right_sibling.GetRID(i + 1));
+        }
+        
+        // Update key counts
+        node.SetKeyCount(node_key_count + 1);
+        right_sibling.SetKeyCount(right_key_count - 1);
+        
+        // Update parent separator key
+        Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+        if (parent_page) {
+            BPlusTreeNode parent(parent_page);
+            uint16_t key_count = parent.GetKeyCount();
+            for (uint16_t i = 0; i < key_count; i++) {
+                if (parent.GetChildPageId(i) == node_page_id) {
+                    parent.SetKey(i, right_sibling.GetKey(0)); // Update separator to new first key of right sibling
+                    break;
+                }
+            }
+            buffer_pool_->UnpinPage(parent_page_id, true);
+        }
+    }
+    
+    // Merge with left sibling for leaf nodes
+    bool MergeWithLeftLeaf(uint32_t node_page_id, uint32_t left_sibling_id, uint32_t parent_page_id) {
+        Page* node_page = buffer_pool_->FetchPage(node_page_id);
+        Page* left_sibling_page = buffer_pool_->FetchPage(left_sibling_id);
+        if (!node_page || !left_sibling_page) {
+            if (node_page) buffer_pool_->UnpinPage(node_page_id, false);
+            if (left_sibling_page) buffer_pool_->UnpinPage(left_sibling_id, false);
+            return false;
+        }
+        
+        BPlusTreeNode node(node_page);
+        BPlusTreeNode left_sibling(left_sibling_page);
+        
+        uint16_t node_key_count = node.GetKeyCount();
+        uint16_t left_key_count = left_sibling.GetKeyCount();
+        
+        // Move all keys from node to left sibling
+        for (uint16_t i = 0; i < node_key_count; i++) {
+            left_sibling.SetKey(left_key_count + i, node.GetKey(i));
+            left_sibling.SetRID(left_key_count + i, node.GetRID(i));
+        }
+        
+        // Update left sibling key count
+        left_sibling.SetKeyCount(left_key_count + node_key_count);
+        
+        // Update linked list: left_sibling.next = node.next
+        left_sibling.SetNextLeafPageId(node.GetNextLeafPageId());
+        
+        // Update parent: remove separator key and child pointer
+        Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+        if (parent_page) {
+            BPlusTreeNode parent(parent_page);
+            uint16_t parent_key_count = parent.GetKeyCount();
+            
+            // Find the index of the child being removed
+            // key[i] separates child[i] and child[i+1]
+            // When merging child[i+1] (node) into child[i] (left_sibling)
+            // We remove key[i] (separator) and child[i+1] (node)
+            uint16_t child_index = 0;
+            for (uint16_t i = 0; i <= parent_key_count; i++) {
+                if (parent.GetChildPageId(i) == node_page_id) {
+                    child_index = i;
+                    break;
+                }
+            }
+            
+            // Remove separator key at child_index - 1
+            // Shift keys to remove the separator
+            for (uint16_t i = child_index - 1; i < parent_key_count - 1; i++) {
+                parent.SetKey(i, parent.GetKey(i + 1));
+            }
+            
+            // Remove child pointer at child_index
+            // Shift children to remove the child
+            for (uint16_t i = child_index; i <= parent_key_count; i++) {
+                parent.SetChildPageId(i, parent.GetChildPageId(i + 1));
+            }
+            
+            parent.SetKeyCount(parent_key_count - 1);
+            buffer_pool_->UnpinPage(parent_page_id, true);
+        }
+        
+        buffer_pool_->UnpinPage(left_sibling_id, true);
+        buffer_pool_->UnpinPage(node_page_id, true);
+        
+        // TODO: Delete the merged node (node_page_id) from buffer pool
+        // For now, we'll leave it as is (it's no longer reachable)
+        
+        return true;
+    }
+    
+    // Merge with right sibling for leaf nodes
+    bool MergeWithRightLeaf(uint32_t node_page_id, uint32_t right_sibling_id, uint32_t parent_page_id) {
+        Page* node_page = buffer_pool_->FetchPage(node_page_id);
+        Page* right_sibling_page = buffer_pool_->FetchPage(right_sibling_id);
+        if (!node_page || !right_sibling_page) {
+            if (node_page) buffer_pool_->UnpinPage(node_page_id, false);
+            if (right_sibling_page) buffer_pool_->UnpinPage(right_sibling_id, false);
+            return false;
+        }
+        
+        BPlusTreeNode node(node_page);
+        BPlusTreeNode right_sibling(right_sibling_page);
+        
+        uint16_t node_key_count = node.GetKeyCount();
+        uint16_t right_key_count = right_sibling.GetKeyCount();
+        
+        // Move all keys from right sibling to node
+        for (uint16_t i = 0; i < right_key_count; i++) {
+            node.SetKey(node_key_count + i, right_sibling.GetKey(i));
+            node.SetRID(node_key_count + i, right_sibling.GetRID(i));
+        }
+        
+        // Update node key count
+        node.SetKeyCount(node_key_count + right_key_count);
+        
+        // Update linked list: node.next = right_sibling.next
+        node.SetNextLeafPageId(right_sibling.GetNextLeafPageId());
+        
+        // Update parent: remove separator key and child pointer
+        Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+        if (parent_page) {
+            BPlusTreeNode parent(parent_page);
+            uint16_t parent_key_count = parent.GetKeyCount();
+            
+            // Find the index of the child being removed
+            // key[i] separates child[i] and child[i+1]
+            // When merging child[i+1] (right_sibling) into child[i] (node)
+            // We remove key[i] (separator) and child[i+1] (right_sibling)
+            uint16_t child_index = 0;
+            for (uint16_t i = 0; i <= parent_key_count; i++) {
+                if (parent.GetChildPageId(i) == right_sibling_id) {
+                    child_index = i;
+                    break;
+                }
+            }
+            
+            // Remove separator key at child_index - 1
+            // Shift keys to remove the separator
+            for (uint16_t i = child_index - 1; i < parent_key_count - 1; i++) {
+                parent.SetKey(i, parent.GetKey(i + 1));
+            }
+            
+            // Remove child pointer at child_index
+            // Shift children to remove the child
+            for (uint16_t i = child_index; i <= parent_key_count; i++) {
+                parent.SetChildPageId(i, parent.GetChildPageId(i + 1));
+            }
+            
+            parent.SetKeyCount(parent_key_count - 1);
+            buffer_pool_->UnpinPage(parent_page_id, true);
+        }
+        
+        buffer_pool_->UnpinPage(node_page_id, true);
+        buffer_pool_->UnpinPage(right_sibling_id, true);
+        
+        // TODO: Delete the merged node (right_sibling_id) from buffer pool
+        // For now, we'll leave it as is (it's no longer reachable)
+        
+        return true;
+    }
+    
+    // Try to merge with a sibling
+    // Returns true if merge was successful
+    bool TryMerge(uint32_t node_page_id, uint32_t parent_page_id) {
+        // Try left sibling first (preferred)
+        uint32_t left_sibling_id = FindLeftSibling(parent_page_id, node_page_id);
+        if (left_sibling_id != INVALID_PAGE_ID) {
+            Page* left_sibling_page = buffer_pool_->FetchPage(left_sibling_id);
+            if (left_sibling_page) {
+                BPlusTreeNode left_sibling(left_sibling_page);
+                Page* node_page = buffer_pool_->FetchPage(node_page_id);
+                if (node_page) {
+                    BPlusTreeNode node(node_page);
+                    uint16_t combined_keys = left_sibling.GetKeyCount() + node.GetKeyCount();
+                    uint32_t max_keys = BPlusTreeNode::GetMaxLeafKeys();
+                    
+                    if (combined_keys <= max_keys) {
+                        buffer_pool_->UnpinPage(node_page_id, false);
+                        buffer_pool_->UnpinPage(left_sibling_id, false);
+                        return MergeWithLeftLeaf(node_page_id, left_sibling_id, parent_page_id);
+                    }
+                    buffer_pool_->UnpinPage(node_page_id, false);
+                }
+                buffer_pool_->UnpinPage(left_sibling_id, false);
+            }
+        }
+        
+        // Try right sibling
+        uint32_t right_sibling_id = FindRightSibling(parent_page_id, node_page_id);
+        if (right_sibling_id != INVALID_PAGE_ID) {
+            Page* right_sibling_page = buffer_pool_->FetchPage(right_sibling_id);
+            if (right_sibling_page) {
+                BPlusTreeNode right_sibling(right_sibling_page);
+                Page* node_page = buffer_pool_->FetchPage(node_page_id);
+                if (node_page) {
+                    BPlusTreeNode node(node_page);
+                    uint16_t combined_keys = node.GetKeyCount() + right_sibling.GetKeyCount();
+                    uint32_t max_keys = BPlusTreeNode::GetMaxLeafKeys();
+                    
+                    if (combined_keys <= max_keys) {
+                        buffer_pool_->UnpinPage(node_page_id, false);
+                        buffer_pool_->UnpinPage(right_sibling_id, false);
+                        return MergeWithRightLeaf(node_page_id, right_sibling_id, parent_page_id);
+                    }
+                    buffer_pool_->UnpinPage(node_page_id, false);
+                }
+                buffer_pool_->UnpinPage(right_sibling_id, false);
+            }
+        }
+        
+        return false;
+    }
+    
+    // Fix parent underflow recursively after a merge
+    void FixParentUnderflow(uint32_t parent_page_id, const std::vector<uint32_t>& path) {
+        // Find the parent's parent
+        size_t parent_index = 0;
+        for (size_t i = 0; i < path.size(); i++) {
+            if (path[i] == parent_page_id) {
+                parent_index = i;
+                break;
+            }
+        }
+        
+        // If parent is root, handle root reduction
+        if (parent_index == 0) {
+            HandleRootReduction(parent_page_id);
+            return;
+        }
+        
+        // Check if parent underflows
+        Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+        if (!parent_page) {
+            return;
+        }
+        
+        BPlusTreeNode parent_node(parent_page);
+        if (!IsNodeUnderflowed(parent_node)) {
+            buffer_pool_->UnpinPage(parent_page_id, false);
+            return;
+        }
+        
+        buffer_pool_->UnpinPage(parent_page_id, false);
+        
+        // Try redistribution or merge
+        uint32_t grandparent_page_id = path[parent_index - 1];
+        if (!TryRedistribute(parent_page_id, grandparent_page_id)) {
+            if (TryMerge(parent_page_id, grandparent_page_id)) {
+                // Merge succeeded, continue recursively
+                FixParentUnderflow(grandparent_page_id, path);
+            }
+        }
+    }
+    
+    // Handle root reduction when root has only one child
+    void HandleRootReduction(uint32_t root_page_id) {
+        Page* root_page = buffer_pool_->FetchPage(root_page_id);
+        if (!root_page) {
+            return;
+        }
+        
+        BPlusTreeNode root_node(root_page);
+        
+        // If root is a leaf, nothing to do
+        if (root_node.IsLeaf()) {
+            buffer_pool_->UnpinPage(root_page_id, false);
+            return;
+        }
+        
+        // If root has more than one key, nothing to do
+        uint16_t key_count = root_node.GetKeyCount();
+        if (key_count > 0) {
+            buffer_pool_->UnpinPage(root_page_id, false);
+            return;
+        }
+        
+        // Root has no keys but one child - replace root with its child
+        uint32_t child_page_id = root_node.GetChildPageId(0);
+        
+        // Update child's parent to INVALID_PAGE_ID (it's now the root)
+        Page* child_page = buffer_pool_->FetchPage(child_page_id);
+        if (child_page) {
+            BPlusTreeNode child_node(child_page);
+            child_node.SetParentPageId(INVALID_PAGE_ID);
+            buffer_pool_->UnpinPage(child_page_id, true);
+        }
+        
+        buffer_pool_->UnpinPage(root_page_id, true);
+        
+        // Update root page ID
+        root_page_id_ = child_page_id;
+        
+        // TODO: Delete the old root page from buffer pool
     }
     
     // Create the root as a leaf node with first key-value pair
