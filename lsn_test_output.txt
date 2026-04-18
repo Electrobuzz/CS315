@@ -1,0 +1,8 @@
+=== Testing LSN Persistence ===
+Set page LSN to: 12345
+Page LSN before flush: 12345
+Write page to disk: FAILED
+Read page from disk: FAILED
+Page LSN after reload: 0
+❌ LSN PERSISTENCE TEST FAILED
+Expected LSN: 12345, Got LSN: 0

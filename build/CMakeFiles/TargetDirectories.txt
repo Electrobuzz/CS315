@@ -1,0 +1,4 @@
+/home/raman/Acads/Sem 8/CS315/Project/CascadeProjects/windsurf-project/build/CMakeFiles/minidb_lib.dir
+/home/raman/Acads/Sem 8/CS315/Project/CascadeProjects/windsurf-project/build/CMakeFiles/minidb_demo.dir
+/home/raman/Acads/Sem 8/CS315/Project/CascadeProjects/windsurf-project/build/CMakeFiles/edit_cache.dir
+/home/raman/Acads/Sem 8/CS315/Project/CascadeProjects/windsurf-project/build/CMakeFiles/rebuild_cache.dir

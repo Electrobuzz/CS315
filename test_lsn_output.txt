@@ -1,0 +1,4 @@
+=== Testing LSN Persistence Fix ===
+Step 1: Set page LSN to: 12345
+Page LSN in memory: 12345
+ERROR: Failed to write page to disk

@@ -1,0 +1,23 @@
+=== WAL System Tests ===
+=== Test 1: LogManager ===
+Current LSN: 1
+Appended record with LSN: 1
+Appended record with LSN: 2
+Last flushed LSN: 2
+✅ LogManager test completed
+
+=== Test 2: WAL Protocol ===
+Created page 1
+Inserted record into page
+Logged insert with LSN: 1
+Flush page: SUCCESS
+✅ WAL protocol test completed
+
+=== Test 3: Transactions ===
+Began transaction 1
+Logged insert in transaction 1 with LSN: 2
+Commit transaction: SUCCESS
+✅ Transaction test completed
+
+=== ALL WAL TESTS COMPLETED ===
+WAL system is working correctly!

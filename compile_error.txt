@@ -1,0 +1,127 @@
+In file included from src/storage/b_plus_tree.h:7,
+                 from bplus_tree_test.cpp:8:
+src/storage/log_manager.h: In member function ‘const char* minidb::LogRecord::GetData() const’:
+src/storage/log_manager.h:42:42: error: cannot convert ‘const std::vector<char>’ to ‘const char*’ in return
+   42 |     const char* GetData() const { return data_; }
+      |                                          ^~~~~
+      |                                          |
+      |                                          const std::vector<char>
+src/storage/b_plus_tree.h: At global scope:
+src/storage/b_plus_tree.h:248:32: error: expected ‘)’ before ‘*’ token
+  248 |     BPlusTree(BufferPoolManager* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
+      |              ~                 ^
+      |                                )
+src/storage/b_plus_tree.h:342:5: error: ‘BufferPoolManager’ does not name a type
+  342 |     BufferPoolManager* buffer_pool_;
+      |     ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::Search(uint64_t, minidb::RID&)’:
+src/storage/b_plus_tree.h:265:36: error: ‘root_page_id’ was not declared in this scope; did you mean ‘root_page_id_’?
+  265 |         uint32_t current_page_id = root_page_id;
+      |                                    ^~~~~~~~~~~~
+      |                                    root_page_id_
+src/storage/b_plus_tree.h:268:26: error: ‘buffer_pool_’ was not declared in this scope
+  268 |             Page* page = buffer_pool_->FetchPage(current_page_id);
+      |                          ^~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::Insert(uint64_t, const minidb::RID&)’:
+src/storage/b_plus_tree.h:303:36: error: ‘root_page_id’ was not declared in this scope; did you mean ‘root_page_id_’?
+  303 |         uint32_t current_page_id = root_page_id;
+      |                                    ^~~~~~~~~~~~
+      |                                    root_page_id_
+src/storage/b_plus_tree.h:309:26: error: ‘buffer_pool_’ was not declared in this scope
+  309 |             Page* page = buffer_pool_->FetchPage(current_page_id);
+      |                          ^~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::CreateRootLeaf(uint64_t, const minidb::RID&)’:
+src/storage/b_plus_tree.h:366:22: error: ‘buffer_pool_’ was not declared in this scope
+  366 |         Page* page = buffer_pool_->NewPage(page_id);
+      |                      ^~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::SplitLeafAndInsert(const std::vector<unsigned int>&, uint64_t, const minidb::RID&)’:
+src/storage/b_plus_tree.h:444:27: error: ‘buffer_pool_’ was not declared in this scope
+  444 |         Page* leaf_page = buffer_pool_->FetchPage(leaf_page_id);
+      |                           ^~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::InsertIntoParent(const std::vector<unsigned int>&, uint64_t, uint32_t)’:
+src/storage/b_plus_tree.h:527:29: error: ‘buffer_pool_’ was not declared in this scope
+  527 |         Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+      |                             ^~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::CreateNewRoot(uint64_t, uint32_t, uint32_t)’:
+src/storage/b_plus_tree.h:577:31: error: ‘buffer_pool_’ was not declared in this scope
+  577 |         Page* new_root_page = buffer_pool_->NewPage(new_root_page_id);
+      |                               ^~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::SplitInternalAndInsert(const std::vector<unsigned int>&, uint64_t, uint32_t)’:
+src/storage/b_plus_tree.h:614:31: error: ‘buffer_pool_’ was not declared in this scope
+  614 |         Page* internal_page = buffer_pool_->FetchPage(internal_page_id);
+      |                               ^~~~~~~~~~~~
+In file included from src/storage/page.h:3,
+                 from src/storage/buffer_pool_manager.h:3,
+                 from bplus_tree_test.cpp:9:
+src/storage/../common/types.h: At global scope:
+src/storage/../common/types.h:15:20: error: redefinition of ‘constexpr const uint32_t minidb::PAGE_SIZE’
+   15 | constexpr uint32_t PAGE_SIZE = 4096;
+      |                    ^~~~~~~~~
+In file included from src/storage/b_plus_tree.h:6:
+src/storage/page_v2.h:8:20: note: ‘constexpr const uint32_t minidb::PAGE_SIZE’ previously defined here
+    8 | constexpr uint32_t PAGE_SIZE = 4096;
+      |                    ^~~~~~~~~
+src/storage/../common/types.h:16:20: error: redefinition of ‘constexpr const uint32_t minidb::INVALID_PAGE_ID’
+   16 | constexpr uint32_t INVALID_PAGE_ID = 0;
+      |                    ^~~~~~~~~~~~~~~
+src/storage/page_v2.h:9:20: note: ‘constexpr const uint32_t minidb::INVALID_PAGE_ID’ previously defined here
+    9 | constexpr uint32_t INVALID_PAGE_ID = 0;
+      |                    ^~~~~~~~~~~~~~~
+src/storage/page.h:9:7: error: redefinition of ‘class minidb::Page’
+    9 | class Page {
+      |       ^~~~
+src/storage/page_v2.h:11:7: note: previous definition of ‘class minidb::Page’
+   11 | class Page {
+      |       ^~~~
+bplus_tree_test.cpp: In function ‘bool TestAscendingInserts()’:
+bplus_tree_test.cpp:176:41: error: no matching function for call to ‘minidb::BPlusTree::BPlusTree(minidb::BufferPoolManager*, const uint32_t&)’
+  176 |     BPlusTree tree(&bpm, INVALID_PAGE_ID);
+      |                                         ^
+bplus_tree_test.cpp:176:41: note: there are 3 candidates
+src/storage/b_plus_tree.h:246:7: note: candidate 1: ‘minidb::BPlusTree::BPlusTree()’
+  246 | class BPlusTree {
+      |       ^~~~~~~~~
+src/storage/b_plus_tree.h:246:7: note: candidate expects 0 arguments, 2 provided
+src/storage/b_plus_tree.h:246:7: note: candidate 2: ‘constexpr minidb::BPlusTree::BPlusTree(const minidb::BPlusTree&)’
+src/storage/b_plus_tree.h:246:7: note: candidate expects 1 argument, 2 provided
+src/storage/b_plus_tree.h:246:7: note: candidate 3: ‘constexpr minidb::BPlusTree::BPlusTree(minidb::BPlusTree&&)’
+src/storage/b_plus_tree.h:246:7: note: candidate expects 1 argument, 2 provided
+In file included from src/storage/buffer_pool_manager.h:3,
+                 from src/storage/buffer_pool_manager.cpp:1:
+src/storage/page.h:52:11: error: ‘char* minidb::Page::GetData()’ cannot be overloaded with ‘char* minidb::Page::GetData()’
+   52 |     char* GetData() { return data_; }
+      |           ^~~~~~~
+src/storage/page.h:35:11: note: previous declaration ‘char* minidb::Page::GetData()’
+   35 |     char* GetData() { return data_ + HEADER_SIZE; }
+      |           ^~~~~~~
+src/storage/page.h:53:17: error: ‘const char* minidb::Page::GetData() const’ cannot be overloaded with ‘const char* minidb::Page::GetData() const’
+   53 |     const char* GetData() const { return data_; }
+      |                 ^~~~~~~
+src/storage/page.h:36:17: note: previous declaration ‘const char* minidb::Page::GetData() const’
+   36 |     const char* GetData() const { return data_ + HEADER_SIZE; }
+      |                 ^~~~~~~
+src/storage/buffer_pool_manager.cpp: In member function ‘bool minidb::BufferPoolManager::TryToReadPage(minidb::page_id_t, Frame*)’:
+src/storage/buffer_pool_manager.cpp:210:61: error: ‘char* minidb::Page::GetData()’ is private within this context
+  210 |         disk_manager_->ReadPage(page_id, frame->page.GetData());
+      |                                          ~~~~~~~~~~~~~~~~~~~^~
+src/storage/page.h:35:11: note: declared private here
+   35 |     char* GetData() { return data_ + HEADER_SIZE; }
+      |           ^~~~~~~
+src/storage/buffer_pool_manager.cpp: In member function ‘void minidb::BufferPoolManager::WritePageToDisk(minidb::page_id_t, Frame*)’:
+src/storage/buffer_pool_manager.cpp:220:62: error: ‘char* minidb::Page::GetData()’ is private within this context
+  220 |         disk_manager_->WritePage(page_id, frame->page.GetData());
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+src/storage/page.h:35:11: note: declared private here
+   35 |     char* GetData() { return data_ + HEADER_SIZE; }
+      |           ^~~~~~~
+In file included from src/storage/log_manager.cpp:1:
+src/storage/log_manager.h: In member function ‘const char* minidb::LogRecord::GetData() const’:
+src/storage/log_manager.h:42:42: error: cannot convert ‘const std::vector<char>’ to ‘const char*’ in return
+   42 |     const char* GetData() const { return data_; }
+      |                                          ^~~~~
+      |                                          |
+      |                                          const std::vector<char>
+src/storage/log_manager.cpp: In constructor ‘minidb::LogManager::LogManager(const std::string&)’:
+src/storage/log_manager.cpp:158:24: error: ‘class minidb::LogRecord’ has no member named ‘DeserializeFromFile’
+  158 |             if (record.DeserializeFromFile(log_file_)) {
+      |                        ^~~~~~~~~~~~~~~~~~~

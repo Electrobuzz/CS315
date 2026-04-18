@@ -1,0 +1,32 @@
+=== MiniDB Demo: Insert + Scan Milestone ===
+
+1. Creating table structure...
+Table: users (id INTEGER, name VARCHAR, age INTEGER, active BOOLEAN)
+
+2. Inserting records...
+Inserted 3 records successfully!
+
+3. Scanning all records...
+ID | Name    | Age | Active
+---|---------|-----|--------
+1  | Alice | 25   | true
+2  | Bob | 30   | false
+3  | Charlie | 35   | true
+
+Total records scanned: 3
+
+4. Testing filter (age > 25)...
+ID | Name    | Age | Active
+---|---------|-----|--------
+2  | Bob | 30   | false
+3  | Charlie | 35   | true
+
+Records with age > 25: 2
+
+=== Demo completed successfully! ===
+
+This demonstrates the core functionality:
+- Record creation with multiple data types
+- Insert operation
+- Sequential scan operation
+- Filter operation (WHERE clause equivalent)

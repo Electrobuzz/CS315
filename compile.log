@@ -1,0 +1,13 @@
+In file included from src/storage/page.cpp:1:
+src/storage/page.h:52:11: error: ‘char* minidb::Page::GetData()’ cannot be overloaded with ‘char* minidb::Page::GetData()’
+   52 |     char* GetData() { return data_; }
+      |           ^~~~~~~
+src/storage/page.h:35:11: note: previous declaration ‘char* minidb::Page::GetData()’
+   35 |     char* GetData() { return data_ + HEADER_SIZE; }
+      |           ^~~~~~~
+src/storage/page.h:53:17: error: ‘const char* minidb::Page::GetData() const’ cannot be overloaded with ‘const char* minidb::Page::GetData() const’
+   53 |     const char* GetData() const { return data_; }
+      |                 ^~~~~~~
+src/storage/page.h:36:17: note: previous declaration ‘const char* minidb::Page::GetData() const’
+   36 |     const char* GetData() const { return data_ + HEADER_SIZE; }
+      |                 ^~~~~~~

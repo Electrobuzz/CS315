@@ -1,0 +1,11 @@
+=== Testing LSN Disk Persistence (Minimal) ===
+Step 1: Created page with LSN: 12345
+Page LSN in memory: 12345
+Step 2: Wrote page to disk (4096 bytes)
+Step 3: Read page from disk into new page object
+Step 4: Verification
+  Page ID after reload: 1
+  LSN after reload: 12345
+✅ LSN DISK PERSISTENCE TEST PASSED
+LSN was correctly persisted to disk and restored
+Offset-based layout is working correctly

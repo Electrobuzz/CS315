@@ -1,0 +1,41 @@
+bplus_tree_test.cpp: In function ‘bool TestAscendingInserts()’:
+bplus_tree_test.cpp:248:41: error: no matching function for call to ‘minidb::BPlusTree::BPlusTree(TestBufferPool*, const uint32_t&)’
+  248 |     BPlusTree tree(&bpm, INVALID_PAGE_ID);
+      |                                         ^
+bplus_tree_test.cpp:248:41: note: there are 3 candidates
+In file included from bplus_tree_test.cpp:10:
+src/storage/b_plus_tree.h:251:5: note: candidate 1: ‘minidb::BPlusTree::BPlusTree(minidb::BufferPoolManager*, uint32_t, minidb::LogManager*)’
+  251 |     BPlusTree(BufferPoolManager* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
+      |     ^~~~~~~~~
+src/storage/b_plus_tree.h:251:34: note: no known conversion for argument 1 from ‘TestBufferPool*’ to ‘minidb::BufferPoolManager*’
+  251 |     BPlusTree(BufferPoolManager* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
+      |               ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
+src/storage/b_plus_tree.h:249:7: note: candidate 2: ‘constexpr minidb::BPlusTree::BPlusTree(const minidb::BPlusTree&)’
+  249 | class BPlusTree {
+      |       ^~~~~~~~~
+src/storage/b_plus_tree.h:249:7: note: candidate expects 1 argument, 2 provided
+src/storage/b_plus_tree.h:249:7: note: candidate 3: ‘constexpr minidb::BPlusTree::BPlusTree(minidb::BPlusTree&&)’
+src/storage/b_plus_tree.h:249:7: note: candidate expects 1 argument, 2 provided
+In file included from src/storage/page.h:3,
+                 from src/storage/buffer_pool_manager.h:3,
+                 from src/storage/b_plus_tree.cpp:2:
+src/storage/../common/types.h:15:20: error: redefinition of ‘constexpr const uint32_t minidb::PAGE_SIZE’
+   15 | constexpr uint32_t PAGE_SIZE = 4096;
+      |                    ^~~~~~~~~
+In file included from src/storage/b_plus_tree.h:6,
+                 from src/storage/b_plus_tree.cpp:1:
+src/storage/page_v2.h:8:20: note: ‘constexpr const uint32_t minidb::PAGE_SIZE’ previously defined here
+    8 | constexpr uint32_t PAGE_SIZE = 4096;
+      |                    ^~~~~~~~~
+src/storage/../common/types.h:16:20: error: redefinition of ‘constexpr const uint32_t minidb::INVALID_PAGE_ID’
+   16 | constexpr uint32_t INVALID_PAGE_ID = 0;
+      |                    ^~~~~~~~~~~~~~~
+src/storage/page_v2.h:9:20: note: ‘constexpr const uint32_t minidb::INVALID_PAGE_ID’ previously defined here
+    9 | constexpr uint32_t INVALID_PAGE_ID = 0;
+      |                    ^~~~~~~~~~~~~~~
+src/storage/page.h:9:7: error: redefinition of ‘class minidb::Page’
+    9 | class Page {
+      |       ^~~~
+src/storage/page_v2.h:11:7: note: previous definition of ‘class minidb::Page’
+   11 | class Page {
+      |       ^~~~

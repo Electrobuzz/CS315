@@ -1,0 +1,5 @@
+=== Testing LSN Memory Storage ===
+Set page LSN to: 12345
+Page LSN after set: 12345
+✅ LSN MEMORY TEST PASSED
+LSN was correctly stored in page memory

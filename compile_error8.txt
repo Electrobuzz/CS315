@@ -1,0 +1,19 @@
+In file included from bplus_tree_test.cpp:10:
+src/storage/b_plus_tree.h:373:10: error: ‘bool minidb::BPlusTree<BufferPoolType>::Search(uint64_t, minidb::RID&)’ cannot be overloaded with ‘bool minidb::BPlusTree<BufferPoolType>::Search(uint64_t, minidb::RID&)’ [-Wtemplate-body]
+  373 |     bool Search(uint64_t key, RID& rid) {
+      |          ^~~~~~
+src/storage/b_plus_tree.h:263:10: note: previous declaration ‘bool minidb::BPlusTree<BufferPoolType>::Search(uint64_t, minidb::RID&)’
+  263 |     bool Search(uint64_t key, RID& rid);
+      |          ^~~~~~
+src/storage/b_plus_tree.h:404:10: error: ‘bool minidb::BPlusTree<BufferPoolType>::Insert(uint64_t, const minidb::RID&)’ cannot be overloaded with ‘bool minidb::BPlusTree<BufferPoolType>::Insert(uint64_t, const minidb::RID&)’ [-Wtemplate-body]
+  404 |     bool Insert(uint64_t key, const RID& rid) {
+      |          ^~~~~~
+src/storage/b_plus_tree.h:267:10: note: previous declaration ‘bool minidb::BPlusTree<BufferPoolType>::Insert(uint64_t, const minidb::RID&)’
+  267 |     bool Insert(uint64_t key, const RID& rid);
+      |          ^~~~~~
+src/storage/b_plus_tree.h:664:10: error: ‘void minidb::BPlusTree<BufferPoolType>::SetRootPageId(uint32_t)’ cannot be overloaded with ‘void minidb::BPlusTree<BufferPoolType>::SetRootPageId(uint32_t)’ [-Wtemplate-body]
+  664 |     void SetRootPageId(uint32_t root_page_id) {
+      |          ^~~~~~~~~~~~~
+src/storage/b_plus_tree.h:259:10: note: previous declaration ‘void minidb::BPlusTree<BufferPoolType>::SetRootPageId(uint32_t)’
+  259 |     void SetRootPageId(uint32_t root_page_id);
+      |          ^~~~~~~~~~~~~

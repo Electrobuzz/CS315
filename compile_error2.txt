@@ -1,0 +1,325 @@
+In file included from bplus_tree_test.cpp:8:
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::Search(uint64_t, minidb::RID&)’:
+src/storage/b_plus_tree.h:268:36: error: ‘root_page_id’ was not declared in this scope; did you mean ‘root_page_id_’?
+  268 |         uint32_t current_page_id = root_page_id;
+      |                                    ^~~~~~~~~~~~
+      |                                    root_page_id_
+src/storage/b_plus_tree.h:271:38: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  271 |             Page* page = buffer_pool_->FetchPage(current_page_id);
+      |                                      ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:281:29: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  281 |                 buffer_pool_->UnpinPage(current_page_id, false);
+      |                             ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:286:29: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  286 |                 buffer_pool_->UnpinPage(current_page_id, false);
+      |                             ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::Insert(uint64_t, const minidb::RID&)’:
+src/storage/b_plus_tree.h:306:36: error: ‘root_page_id’ was not declared in this scope; did you mean ‘root_page_id_’?
+  306 |         uint32_t current_page_id = root_page_id;
+      |                                    ^~~~~~~~~~~~
+      |                                    root_page_id_
+src/storage/b_plus_tree.h:312:38: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  312 |             Page* page = buffer_pool_->FetchPage(current_page_id);
+      |                                      ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:323:33: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  323 |                     buffer_pool_->UnpinPage(current_page_id, true);
+      |                                 ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:328:29: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  328 |                 buffer_pool_->UnpinPage(current_page_id, false);
+      |                             ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:333:29: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  333 |                 buffer_pool_->UnpinPage(current_page_id, false);
+      |                             ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::CreateRootLeaf(uint64_t, const minidb::RID&)’:
+src/storage/b_plus_tree.h:369:34: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  369 |         Page* page = buffer_pool_->NewPage(page_id);
+      |                                  ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:386:21: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  386 |         buffer_pool_->UnpinPage(page_id, true);  // Mark dirty
+      |                     ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::SplitLeafAndInsert(const std::vector<unsigned int>&, uint64_t, const minidb::RID&)’:
+src/storage/b_plus_tree.h:447:39: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  447 |         Page* leaf_page = buffer_pool_->FetchPage(leaf_page_id);
+      |                                       ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:456:43: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  456 |         Page* new_leaf_page = buffer_pool_->NewPage(new_leaf_page_id);
+      |                                           ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:458:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  458 |             buffer_pool_->UnpinPage(leaf_page_id, false);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:514:21: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  514 |         buffer_pool_->UnpinPage(leaf_page_id, true);
+      |                     ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:515:21: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  515 |         buffer_pool_->UnpinPage(new_leaf_page_id, true);
+      |                     ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::InsertIntoParent(const std::vector<unsigned int>&, uint64_t, uint32_t)’:
+src/storage/b_plus_tree.h:530:41: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  530 |         Page* parent_page = buffer_pool_->FetchPage(parent_page_id);
+      |                                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:538:40: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  538 |         Page* child_page = buffer_pool_->FetchPage(child_page_id);
+      |                                        ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:542:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  542 |             buffer_pool_->UnpinPage(child_page_id, true);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:568:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  568 |             buffer_pool_->UnpinPage(parent_page_id, true);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:572:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  572 |             buffer_pool_->UnpinPage(parent_page_id, false);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::CreateNewRoot(uint64_t, uint32_t, uint32_t)’:
+src/storage/b_plus_tree.h:580:43: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  580 |         Page* new_root_page = buffer_pool_->NewPage(new_root_page_id);
+      |                                           ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:594:39: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  594 |         Page* left_page = buffer_pool_->FetchPage(left_child);
+      |                                       ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:598:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  598 |             buffer_pool_->UnpinPage(left_child, true);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:601:40: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  601 |         Page* right_page = buffer_pool_->FetchPage(right_child);
+      |                                        ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:605:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  605 |             buffer_pool_->UnpinPage(right_child, true);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:608:21: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  608 |         buffer_pool_->UnpinPage(new_root_page_id, true);
+      |                     ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h: In member function ‘bool minidb::BPlusTree::SplitInternalAndInsert(const std::vector<unsigned int>&, uint64_t, uint32_t)’:
+src/storage/b_plus_tree.h:617:43: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  617 |         Page* internal_page = buffer_pool_->FetchPage(internal_page_id);
+      |                                           ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:626:47: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  626 |         Page* new_internal_page = buffer_pool_->NewPage(new_internal_page_id);
+      |                                               ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:628:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  628 |             buffer_pool_->UnpinPage(internal_page_id, false);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:684:21: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  684 |         buffer_pool_->UnpinPage(internal_page_id, true);
+      |                     ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+src/storage/b_plus_tree.h:685:21: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  685 |         buffer_pool_->UnpinPage(new_internal_page_id, true);
+      |                     ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp: At global scope:
+bplus_tree_test.cpp:63:5: error: ‘DiskManager’ does not name a type
+   63 |     DiskManager* GetDiskManager() { return disk_manager_; }
+      |     ^~~~~~~~~~~
+bplus_tree_test.cpp:68:5: error: ‘DiskManager’ does not name a type
+   68 |     DiskManager* disk_manager_;
+      |     ^~~~~~~~~~~
+bplus_tree_test.cpp:69:10: error: ‘unordered_map’ in namespace ‘std’ does not name a template type
+   69 |     std::unordered_map<uint32_t, Page*> pages_;
+      |          ^~~~~~~~~~~~~
+bplus_tree_test.cpp:9:1: note: ‘std::unordered_map’ is defined in header ‘<unordered_map>’; this is probably fixable by adding ‘#include <unordered_map>’
+    8 | #include "src/storage/b_plus_tree.h"
+  +++ |+#include <unordered_map>
+    9 | 
+bplus_tree_test.cpp: In constructor ‘TestBufferPoolManager::TestBufferPoolManager(size_t, const std::string&)’:
+bplus_tree_test.cpp:18:9: error: ‘disk_manager_’ was not declared in this scope
+   18 |         disk_manager_ = new DiskManager(db_file);
+      |         ^~~~~~~~~~~~~
+bplus_tree_test.cpp:18:29: error: expected type-specifier before ‘DiskManager’
+   18 |         disk_manager_ = new DiskManager(db_file);
+      |                             ^~~~~~~~~~~
+bplus_tree_test.cpp: In destructor ‘TestBufferPoolManager::~TestBufferPoolManager()’:
+bplus_tree_test.cpp:22:16: error: ‘disk_manager_’ was not declared in this scope
+   22 |         delete disk_manager_;
+      |                ^~~~~~~~~~~~~
+bplus_tree_test.cpp: In member function ‘minidb::Page* TestBufferPoolManager::NewPage(uint32_t&)’:
+bplus_tree_test.cpp:26:19: error: ‘disk_manager_’ was not declared in this scope
+   26 |         page_id = disk_manager_->AllocatePage();
+      |                   ^~~~~~~~~~~~~
+bplus_tree_test.cpp:29:9: error: ‘pages_’ was not declared in this scope; did you mean ‘page’?
+   29 |         pages_[page_id] = page;
+      |         ^~~~~~
+      |         page
+bplus_tree_test.cpp: In member function ‘minidb::Page* TestBufferPoolManager::FetchPage(uint32_t)’:
+bplus_tree_test.cpp:34:19: error: ‘pages_’ was not declared in this scope
+   34 |         auto it = pages_.find(page_id);
+      |                   ^~~~~~
+bplus_tree_test.cpp:41:9: error: ‘disk_manager_’ was not declared in this scope
+   41 |         disk_manager_->ReadPage(page_id, page->GetData());
+      |         ^~~~~~~~~~~~~
+bplus_tree_test.cpp: In member function ‘void TestBufferPoolManager::UnpinPage(uint32_t, bool)’:
+bplus_tree_test.cpp:49:23: error: ‘pages_’ was not declared in this scope
+   49 |             auto it = pages_.find(page_id);
+      |                       ^~~~~~
+bplus_tree_test.cpp:51:17: error: ‘disk_manager_’ was not declared in this scope
+   51 |                 disk_manager_->WritePage(page_id, it->second->GetData());
+      |                 ^~~~~~~~~~~~~
+bplus_tree_test.cpp: In member function ‘void TestBufferPoolManager::FlushPage(uint32_t)’:
+bplus_tree_test.cpp:57:19: error: ‘pages_’ was not declared in this scope
+   57 |         auto it = pages_.find(page_id);
+      |                   ^~~~~~
+bplus_tree_test.cpp:59:13: error: ‘disk_manager_’ was not declared in this scope
+   59 |             disk_manager_->WritePage(page_id, it->second->GetData());
+      |             ^~~~~~~~~~~~~
+bplus_tree_test.cpp: In function ‘bool ValidateParentConsistency(minidb::BPlusTreeNode&, minidb::BufferPoolManager*)’:
+bplus_tree_test.cpp:126:28: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  126 |     Page* parent_page = bpm->FetchPage(parent_page_id);
+      |                            ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp:142:8: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  142 |     bpm->UnpinPage(parent_page_id, false);
+      |        ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp: In function ‘bool ValidateTreeStructure(minidb::BPlusTree&, minidb::BufferPoolManager*)’:
+bplus_tree_test.cpp:162:25: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  162 |         Page* page = bpm->FetchPage(current);
+      |                         ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp:170:16: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  170 |             bpm->UnpinPage(current, false);
+      |                ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp:176:16: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  176 |             bpm->UnpinPage(current, false);
+      |                ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp:182:16: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  182 |             bpm->UnpinPage(current, false);
+      |                ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp:188:16: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  188 |             bpm->UnpinPage(current, false);
+      |                ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp:203:12: error: invalid use of incomplete type ‘class minidb::BufferPoolManager’
+  203 |         bpm->UnpinPage(current, false);
+      |            ^~
+src/storage/b_plus_tree.h:11:7: note: forward declaration of ‘class minidb::BufferPoolManager’
+   11 | class BufferPoolManager;
+      |       ^~~~~~~~~~~~~~~~~
+bplus_tree_test.cpp: In function ‘bool TestAscendingInserts()’:
+bplus_tree_test.cpp:233:41: error: no matching function for call to ‘minidb::BPlusTree::BPlusTree(TestBufferPoolManager*, const uint32_t&)’
+  233 |     BPlusTree tree(&bpm, INVALID_PAGE_ID);
+      |                                         ^
+bplus_tree_test.cpp:233:41: note: there are 3 candidates
+src/storage/b_plus_tree.h:251:5: note: candidate 1: ‘minidb::BPlusTree::BPlusTree(minidb::BufferPoolManager*, uint32_t, minidb::LogManager*)’
+  251 |     BPlusTree(BufferPoolManager* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
+      |     ^~~~~~~~~
+src/storage/b_plus_tree.h:251:34: note: no known conversion for argument 1 from ‘TestBufferPoolManager*’ to ‘minidb::BufferPoolManager*’
+  251 |     BPlusTree(BufferPoolManager* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
+      |               ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
+src/storage/b_plus_tree.h:249:7: note: candidate 2: ‘constexpr minidb::BPlusTree::BPlusTree(const minidb::BPlusTree&)’
+  249 | class BPlusTree {
+      |       ^~~~~~~~~
+src/storage/b_plus_tree.h:249:7: note: candidate expects 1 argument, 2 provided
+src/storage/b_plus_tree.h:249:7: note: candidate 3: ‘constexpr minidb::BPlusTree::BPlusTree(minidb::BPlusTree&&)’
+src/storage/b_plus_tree.h:249:7: note: candidate expects 1 argument, 2 provided
+bplus_tree_test.cpp:259:38: error: cannot convert ‘TestBufferPoolManager*’ to ‘minidb::BufferPoolManager*’
+  259 |     if (!ValidateTreeStructure(tree, &bpm)) {
+      |                                      ^~~~
+      |                                      |
+      |                                      TestBufferPoolManager*
+bplus_tree_test.cpp:147:64: note: initializing argument 2 of ‘bool ValidateTreeStructure(minidb::BPlusTree&, minidb::BufferPoolManager*)’
+  147 | bool ValidateTreeStructure(BPlusTree& tree, BufferPoolManager* bpm) {
+      |                                             ~~~~~~~~~~~~~~~~~~~^~~

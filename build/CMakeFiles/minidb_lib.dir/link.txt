@@ -1,0 +1,2 @@
+/usr/bin/ar qc libminidb_lib.a CMakeFiles/minidb_lib.dir/src/common/types.cpp.o CMakeFiles/minidb_lib.dir/src/storage/page.cpp.o CMakeFiles/minidb_lib.dir/src/storage/buffer_pool_manager.cpp.o CMakeFiles/minidb_lib.dir/src/storage/disk_manager.cpp.o CMakeFiles/minidb_lib.dir/src/catalog/schema.cpp.o CMakeFiles/minidb_lib.dir/src/execution/executor.cpp.o CMakeFiles/minidb_lib.dir/src/db/database.cpp.o
+/usr/bin/ranlib libminidb_lib.a

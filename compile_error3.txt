@@ -1,0 +1,104 @@
+In file included from src/storage/page.h:3,
+                 from src/storage/buffer_pool_manager.h:3,
+                 from src/storage/b_plus_tree.h:7,
+                 from bplus_tree_test.cpp:9:
+src/storage/../common/types.h:15:20: error: redefinition of ‘constexpr const uint32_t minidb::PAGE_SIZE’
+   15 | constexpr uint32_t PAGE_SIZE = 4096;
+      |                    ^~~~~~~~~
+In file included from src/storage/b_plus_tree.h:6:
+src/storage/page_v2.h:8:20: note: ‘constexpr const uint32_t minidb::PAGE_SIZE’ previously defined here
+    8 | constexpr uint32_t PAGE_SIZE = 4096;
+      |                    ^~~~~~~~~
+src/storage/../common/types.h:16:20: error: redefinition of ‘constexpr const uint32_t minidb::INVALID_PAGE_ID’
+   16 | constexpr uint32_t INVALID_PAGE_ID = 0;
+      |                    ^~~~~~~~~~~~~~~
+src/storage/page_v2.h:9:20: note: ‘constexpr const uint32_t minidb::INVALID_PAGE_ID’ previously defined here
+    9 | constexpr uint32_t INVALID_PAGE_ID = 0;
+      |                    ^~~~~~~~~~~~~~~
+src/storage/page.h:9:7: error: redefinition of ‘class minidb::Page’
+    9 | class Page {
+      |       ^~~~
+src/storage/page_v2.h:11:7: note: previous definition of ‘class minidb::Page’
+   11 | class Page {
+      |       ^~~~
+bplus_tree_test.cpp: In member function ‘minidb::Page* TestBufferPoolManager::FetchPage(uint32_t)’:
+bplus_tree_test.cpp:43:55: error: cannot convert ‘char*’ to ‘minidb::Page&’
+   43 |         disk_manager_->ReadPage(page_id, page->GetData());
+      |                                          ~~~~~~~~~~~~~^~
+      |                                                       |
+      |                                                       char*
+In file included from bplus_tree_test.cpp:10:
+src/storage/disk_manager_v2.h:21:43: note: initializing argument 2 of ‘bool minidb::DiskManager::ReadPage(uint32_t, minidb::Page&)’
+   21 |     bool ReadPage(uint32_t page_id, Page& page);
+      |                                     ~~~~~~^~~~
+bplus_tree_test.cpp: In member function ‘void TestBufferPoolManager::UnpinPage(uint32_t, bool)’:
+bplus_tree_test.cpp:53:70: error: cannot convert ‘char*’ to ‘const minidb::Page&’
+   53 |                 disk_manager_->WritePage(page_id, it->second->GetData());
+      |                                                   ~~~~~~~~~~~~~~~~~~~^~
+      |                                                                      |
+      |                                                                      char*
+src/storage/disk_manager_v2.h:22:50: note: initializing argument 2 of ‘bool minidb::DiskManager::WritePage(uint32_t, const minidb::Page&)’
+   22 |     bool WritePage(uint32_t page_id, const Page& page);
+      |                                      ~~~~~~~~~~~~^~~~
+bplus_tree_test.cpp: In member function ‘void TestBufferPoolManager::FlushPage(uint32_t)’:
+bplus_tree_test.cpp:61:66: error: cannot convert ‘char*’ to ‘const minidb::Page&’
+   61 |             disk_manager_->WritePage(page_id, it->second->GetData());
+      |                                               ~~~~~~~~~~~~~~~~~~~^~
+      |                                                                  |
+      |                                                                  char*
+src/storage/disk_manager_v2.h:22:50: note: initializing argument 2 of ‘bool minidb::DiskManager::WritePage(uint32_t, const minidb::Page&)’
+   22 |     bool WritePage(uint32_t page_id, const Page& page);
+      |                                      ~~~~~~~~~~~~^~~~
+bplus_tree_test.cpp: In function ‘bool TestAscendingInserts()’:
+bplus_tree_test.cpp:235:41: error: no matching function for call to ‘minidb::BPlusTree::BPlusTree(TestBufferPoolManager*, const uint32_t&)’
+  235 |     BPlusTree tree(&bpm, INVALID_PAGE_ID);
+      |                                         ^
+bplus_tree_test.cpp:235:41: note: there are 3 candidates
+src/storage/b_plus_tree.h:251:5: note: candidate 1: ‘minidb::BPlusTree::BPlusTree(minidb::BufferPoolManager*, uint32_t, minidb::LogManager*)’
+  251 |     BPlusTree(BufferPoolManager* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
+      |     ^~~~~~~~~
+src/storage/b_plus_tree.h:251:34: note: no known conversion for argument 1 from ‘TestBufferPoolManager*’ to ‘minidb::BufferPoolManager*’
+  251 |     BPlusTree(BufferPoolManager* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
+      |               ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
+src/storage/b_plus_tree.h:249:7: note: candidate 2: ‘constexpr minidb::BPlusTree::BPlusTree(const minidb::BPlusTree&)’
+  249 | class BPlusTree {
+      |       ^~~~~~~~~
+src/storage/b_plus_tree.h:249:7: note: candidate expects 1 argument, 2 provided
+src/storage/b_plus_tree.h:249:7: note: candidate 3: ‘constexpr minidb::BPlusTree::BPlusTree(minidb::BPlusTree&&)’
+src/storage/b_plus_tree.h:249:7: note: candidate expects 1 argument, 2 provided
+bplus_tree_test.cpp:261:38: error: cannot convert ‘TestBufferPoolManager*’ to ‘minidb::BufferPoolManager*’
+  261 |     if (!ValidateTreeStructure(tree, &bpm)) {
+      |                                      ^~~~
+      |                                      |
+      |                                      TestBufferPoolManager*
+bplus_tree_test.cpp:149:64: note: initializing argument 2 of ‘bool ValidateTreeStructure(minidb::BPlusTree&, minidb::BufferPoolManager*)’
+  149 | bool ValidateTreeStructure(BPlusTree& tree, BufferPoolManager* bpm) {
+      |                                             ~~~~~~~~~~~~~~~~~~~^~~
+In file included from src/storage/buffer_pool_manager.h:3,
+                 from src/storage/buffer_pool_manager.cpp:1:
+src/storage/page.h:52:11: error: ‘char* minidb::Page::GetData()’ cannot be overloaded with ‘char* minidb::Page::GetData()’
+   52 |     char* GetData() { return data_; }
+      |           ^~~~~~~
+src/storage/page.h:35:11: note: previous declaration ‘char* minidb::Page::GetData()’
+   35 |     char* GetData() { return data_ + HEADER_SIZE; }
+      |           ^~~~~~~
+src/storage/page.h:53:17: error: ‘const char* minidb::Page::GetData() const’ cannot be overloaded with ‘const char* minidb::Page::GetData() const’
+   53 |     const char* GetData() const { return data_; }
+      |                 ^~~~~~~
+src/storage/page.h:36:17: note: previous declaration ‘const char* minidb::Page::GetData() const’
+   36 |     const char* GetData() const { return data_ + HEADER_SIZE; }
+      |                 ^~~~~~~
+src/storage/buffer_pool_manager.cpp: In member function ‘bool minidb::BufferPoolManager::TryToReadPage(minidb::page_id_t, Frame*)’:
+src/storage/buffer_pool_manager.cpp:210:61: error: ‘char* minidb::Page::GetData()’ is private within this context
+  210 |         disk_manager_->ReadPage(page_id, frame->page.GetData());
+      |                                          ~~~~~~~~~~~~~~~~~~~^~
+src/storage/page.h:35:11: note: declared private here
+   35 |     char* GetData() { return data_ + HEADER_SIZE; }
+      |           ^~~~~~~
+src/storage/buffer_pool_manager.cpp: In member function ‘void minidb::BufferPoolManager::WritePageToDisk(minidb::page_id_t, Frame*)’:
+src/storage/buffer_pool_manager.cpp:220:62: error: ‘char* minidb::Page::GetData()’ is private within this context
+  220 |         disk_manager_->WritePage(page_id, frame->page.GetData());
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+src/storage/page.h:35:11: note: declared private here
+   35 |     char* GetData() { return data_ + HEADER_SIZE; }
+      |           ^~~~~~~
