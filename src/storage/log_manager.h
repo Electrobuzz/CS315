@@ -39,7 +39,7 @@ public:
     LogRecordType GetType() const { return type_; }
     txn_id_t GetTxnID() const { return txn_id_; }
     uint32_t GetPageID() const { return page_id_; }
-    const char* GetData() const { return data_; }
+    const char* GetData() const { return data_.data(); }
     uint32_t GetDataSize() const { return data_size_; }
     
     // Setters
@@ -49,6 +49,7 @@ public:
     uint32_t GetSerializedSize() const;
     bool Serialize(char* buffer, uint32_t buffer_size) const;
     bool Deserialize(const char* buffer, uint32_t buffer_size);
+    bool DeserializeFromFile(std::fstream& file);
     
     // Utility
     std::string GetTypeString() const;

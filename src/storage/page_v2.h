@@ -12,17 +12,22 @@ class Page {
 public:
     static constexpr uint32_t SIZE = PAGE_SIZE;
     
+    // Page layout: [Node Data (0-4087) | LSN Trailer (4088-4095)]
+    // Node data region: [0, OFFSET_LAST_LSN)
+    // LSN trailer region: [OFFSET_LAST_LSN, SIZE)
+    static constexpr uint32_t PAGE_TRAILER_SIZE = sizeof(uint64_t);
+    static constexpr uint32_t OFFSET_LAST_LSN = SIZE - PAGE_TRAILER_SIZE;
+    
     // Page header layout (24 bytes total) - EXACT BYTE OFFSETS
     // Offset 0-3:   page_id (uint32_t)
     // Offset 4-7:   free_space_offset (uint32_t)
     // Offset 8-11:  slot_count (uint32_t)
     // Offset 12-15: free_slot_count (uint32_t)
-    // Offset 16-23: last_lsn (uint64_t)
+    // Offset 16-23: (unused - reserved for future use)
     static constexpr uint32_t OFFSET_PAGE_ID = 0;
     static constexpr uint32_t OFFSET_FREE_SPACE_OFFSET = 4;
     static constexpr uint32_t OFFSET_SLOT_COUNT = 8;
     static constexpr uint32_t OFFSET_FREE_SLOT_COUNT = 12;
-    static constexpr uint32_t OFFSET_LAST_LSN = 16;
     static constexpr uint32_t HEADER_SIZE = 24;
     
     // Slot directory entry (8 bytes each)
@@ -109,6 +114,19 @@ public:
     // LSN operations - THESE NOW READ/WRITE DIRECTLY TO RAW MEMORY
     uint64_t GetLastLSN() const { return ReadUint64(OFFSET_LAST_LSN); }
     void SetLastLSN(uint64_t lsn) { WriteUint64(OFFSET_LAST_LSN, lsn); }
+    
+    // Page layout validation
+    static bool ValidateWriteOffset(uint32_t offset, uint32_t size) {
+        return (offset + size) <= OFFSET_LAST_LSN;
+    }
+    
+    static bool ValidatePageLayout() {
+        static_assert(OFFSET_LAST_LSN == SIZE - PAGE_TRAILER_SIZE, 
+                      "LSN offset must be at end of page");
+        static_assert(PAGE_TRAILER_SIZE == sizeof(uint64_t), 
+                      "Trailer size must be 8 bytes for uint64_t LSN");
+        return true;
+    }
     
     // Raw data access
     char* GetData() { return data_; }

@@ -107,6 +107,39 @@ bool LogRecord::Deserialize(const char* buffer, uint32_t buffer_size) {
     return true;
 }
 
+bool LogRecord::DeserializeFromFile(std::fstream& file) {
+    // Read LSN
+    file.read(reinterpret_cast<char*>(&lsn_), sizeof(lsn_t));
+    if (!file) return false;
+    
+    // Read Type
+    file.read(reinterpret_cast<char*>(&type_), sizeof(LogRecordType));
+    if (!file) return false;
+    
+    // Read TxnID
+    file.read(reinterpret_cast<char*>(&txn_id_), sizeof(txn_id_t));
+    if (!file) return false;
+    
+    // Read PageID
+    file.read(reinterpret_cast<char*>(&page_id_), sizeof(uint32_t));
+    if (!file) return false;
+    
+    // Read DataSize
+    file.read(reinterpret_cast<char*>(&data_size_), sizeof(uint32_t));
+    if (!file) return false;
+    
+    // Read Data
+    if (data_size_ > 0) {
+        data_.resize(data_size_);
+        file.read(reinterpret_cast<char*>(data_.data()), data_size_);
+        if (!file) return false;
+    } else {
+        data_.clear();
+    }
+    
+    return true;
+}
+
 std::string LogRecord::GetTypeString() const {
     switch (type_) {
         case LogRecordType::BEGIN: return "BEGIN";
