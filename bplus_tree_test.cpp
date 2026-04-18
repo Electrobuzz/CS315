@@ -439,6 +439,17 @@ int CalculateTreeHeight(BPlusTree<TestBufferPool>& tree, TestBufferPool* bpm) {
     return height;
 }
 
+// Helper function to verify results are sorted
+bool VerifyResultsSorted(const std::vector<std::pair<uint64_t, RID>>& results) {
+    for (size_t i = 1; i < results.size(); i++) {
+        if (results[i-1].first > results[i].first) {
+            std::cout << "  FAIL: Results not sorted at index " << i << ": " << results[i-1].first << " > " << results[i].first << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
 // Test 4: Deep Tree Test
 bool TestDeepTree() {
     std::cout << "\n=== Test: Deep Tree (100000 keys for height >= 3) ===" << std::endl;
@@ -496,6 +507,559 @@ bool TestDeepTree() {
     return true;
 }
 
+// Test 5: Small Range Scan Test
+bool TestSmallRangeScan() {
+    std::cout << "\n=== Test: Small Range Scan ===" << std::endl;
+    
+    const std::string db_file = "test_small_range.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 100 keys
+    for (uint64_t key = 1; key <= 100; key++) {
+        RID rid(key, key * 10);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted 100 keys" << std::endl;
+    
+    // Scan range [25, 50]
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(25, 50, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got exactly 26 keys (25 through 50 inclusive)
+    if (results.size() != 26) {
+        std::cout << "  FAIL: Expected 26 results, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    // Verify results are sorted and correct
+    for (size_t i = 0; i < results.size(); i++) {
+        uint64_t expected_key = 25 + i;
+        if (results[i].first != expected_key) {
+            std::cout << "  FAIL: Expected key " << expected_key << " at index " << i << ", got " << results[i].first << std::endl;
+            return false;
+        }
+        if (results[i].second.page_id != expected_key || results[i].second.slot_id != expected_key * 10) {
+            std::cout << "  FAIL: Incorrect RID for key " << expected_key << std::endl;
+            return false;
+        }
+    }
+    
+    // Verify results are sorted
+    if (!VerifyResultsSorted(results)) {
+        return false;
+    }
+    
+    std::cout << "  Range scan verified: keys 25-50 with correct RIDs" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 6: Full Range Scan Test
+bool TestFullRangeScan() {
+    std::cout << "\n=== Test: Full Range Scan ===" << std::endl;
+    
+    const std::string db_file = "test_full_range.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 200 keys
+    for (uint64_t key = 1; key <= 200; key++) {
+        RID rid(key, key * 11);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted 200 keys" << std::endl;
+    
+    // Scan entire range [1, 200]
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(1, 200, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got exactly 200 keys
+    if (results.size() != 200) {
+        std::cout << "  FAIL: Expected 200 results, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    // Verify results are sorted and correct
+    for (size_t i = 0; i < results.size(); i++) {
+        uint64_t expected_key = 1 + i;
+        if (results[i].first != expected_key) {
+            std::cout << "  FAIL: Expected key " << expected_key << " at index " << i << ", got " << results[i].first << std::endl;
+            return false;
+        }
+    }
+    
+    // Verify results are sorted
+    if (!VerifyResultsSorted(results)) {
+        return false;
+    }
+    
+    std::cout << "  Full range scan verified: all 200 keys in sorted order" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 7: Cross-Leaf Range Scan Test
+bool TestCrossLeafRangeScan() {
+    std::cout << "\n=== Test: Cross-Leaf Range Scan ===" << std::endl;
+    
+    const std::string db_file = "test_cross_leaf.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert enough keys to cause multiple leaf splits
+    const int num_keys = 500;
+    for (uint64_t key = 1; key <= num_keys; key++) {
+        RID rid(key, key * 12);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted " << num_keys << " keys" << std::endl;
+    
+    // Scan range that spans multiple leaves [200, 400]
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(200, 400, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got exactly 201 keys (200 through 400 inclusive)
+    if (results.size() != 201) {
+        std::cout << "  FAIL: Expected 201 results, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    // Verify results are sorted and correct
+    for (size_t i = 0; i < results.size(); i++) {
+        uint64_t expected_key = 200 + i;
+        if (results[i].first != expected_key) {
+            std::cout << "  FAIL: Expected key " << expected_key << " at index " << i << ", got " << results[i].first << std::endl;
+            return false;
+        }
+    }
+    
+    // Verify results are sorted
+    if (!VerifyResultsSorted(results)) {
+        return false;
+    }
+    
+    std::cout << "  Cross-leaf range scan verified: 201 keys across multiple leaves" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 8: Single-Key Range (Exact Match)
+bool TestSingleKeyRange() {
+    std::cout << "\n=== Test: Single-Key Range (Exact Match) ===" << std::endl;
+    
+    const std::string db_file = "test_single_key.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 100 keys
+    for (uint64_t key = 1; key <= 100; key++) {
+        RID rid(key, key * 20);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted 100 keys" << std::endl;
+    
+    // Scan range [50, 50]
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(50, 50, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got exactly 1 result
+    if (results.size() != 1) {
+        std::cout << "  FAIL: Expected 1 result, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    // Verify the result is key 50 with correct RID
+    if (results[0].first != 50) {
+        std::cout << "  FAIL: Expected key 50, got " << results[0].first << std::endl;
+        return false;
+    }
+    if (results[0].second.page_id != 50 || results[0].second.slot_id != 50 * 20) {
+        std::cout << "  FAIL: Incorrect RID for key 50" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Single-key range verified: key 50 with correct RID" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 9: Empty Range (Outside Data)
+bool TestEmptyRange() {
+    std::cout << "\n=== Test: Empty Range (Outside Data) ===" << std::endl;
+    
+    const std::string db_file = "test_empty_range.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 100 keys (max key = 100)
+    for (uint64_t key = 1; key <= 100; key++) {
+        RID rid(key, key * 21);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted 100 keys (max key = 100)" << std::endl;
+    
+    // Scan range [1000, 2000] - should return empty
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(1000, 2000, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got 0 results
+    if (results.size() != 0) {
+        std::cout << "  FAIL: Expected 0 results, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Empty range verified: no garbage reads" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 10: Reverse Range (Invalid Input)
+bool TestReverseRange() {
+    std::cout << "\n=== Test: Reverse Range (Invalid Input) ===" << std::endl;
+    
+    const std::string db_file = "test_reverse_range.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 100 keys
+    for (uint64_t key = 1; key <= 100; key++) {
+        RID rid(key, key * 22);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted 100 keys" << std::endl;
+    
+    // Scan range [100, 50] - should return empty
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(100, 50, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got 0 results
+    if (results.size() != 0) {
+        std::cout << "  FAIL: Expected 0 results, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Reverse range verified: no crash, empty result" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 11: Boundary Split Case
+bool TestBoundarySplit() {
+    std::cout << "\n=== Test: Boundary Split Case ===" << std::endl;
+    
+    const std::string db_file = "test_boundary_split.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert keys that will cause a split
+    // Leaf capacity is 255 keys, so insert 256 keys to force a split
+    const int num_keys = 256;
+    for (uint64_t key = 1; key <= num_keys; key++) {
+        RID rid(key, key * 23);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted " << num_keys << " keys (forces leaf split)" << std::endl;
+    
+    // The split point is at 128 (256/2)
+    // Scan for the split key
+    uint64_t split_key = 128;
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(split_key, split_key, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan for split key " << split_key << " returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got exactly 1 result (the split key should not be lost)
+    if (results.size() != 1) {
+        std::cout << "  FAIL: Expected 1 result, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    // Verify the result is the split key
+    if (results[0].first != split_key) {
+        std::cout << "  FAIL: Expected key " << split_key << ", got " << results[0].first << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Boundary split verified: split key " << split_key << " not lost during split" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 12: First Leaf Edge
+bool TestFirstLeafEdge() {
+    std::cout << "\n=== Test: First Leaf Edge ===" << std::endl;
+    
+    const std::string db_file = "test_first_leaf.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 100 keys
+    for (uint64_t key = 1; key <= 100; key++) {
+        RID rid(key, key * 24);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted 100 keys" << std::endl;
+    
+    // Scan from first key
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(1, 10, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan [1, 10] returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got exactly 10 results
+    if (results.size() != 10) {
+        std::cout << "  FAIL: Expected 10 results, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    // Verify results are sorted and correct
+    for (size_t i = 0; i < results.size(); i++) {
+        uint64_t expected_key = 1 + i;
+        if (results[i].first != expected_key) {
+            std::cout << "  FAIL: Expected key " << expected_key << " at index " << i << ", got " << results[i].first << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  First leaf edge verified: keys 1-10 in sorted order" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 13: Last Leaf Edge
+bool TestLastLeafEdge() {
+    std::cout << "\n=== Test: Last Leaf Edge ===" << std::endl;
+    
+    const std::string db_file = "test_last_leaf.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 100 keys
+    for (uint64_t key = 1; key <= 100; key++) {
+        RID rid(key, key * 25);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted 100 keys" << std::endl;
+    
+    // Scan to last key
+    std::vector<std::pair<uint64_t, RID>> results;
+    if (!tree.RangeScan(90, 100, results)) {
+        std::cout << "  FAIL: RangeScan returned false" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Range scan [90, 100] returned " << results.size() << " results" << std::endl;
+    
+    // Verify we got exactly 11 results
+    if (results.size() != 11) {
+        std::cout << "  FAIL: Expected 11 results, got " << results.size() << std::endl;
+        return false;
+    }
+    
+    // Verify results are sorted and correct
+    for (size_t i = 0; i < results.size(); i++) {
+        uint64_t expected_key = 90 + i;
+        if (results[i].first != expected_key) {
+            std::cout << "  FAIL: Expected key " << expected_key << " at index " << i << ", got " << results[i].first << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Last leaf edge verified: keys 90-100 in sorted order" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
+// Test 14: Random Range Queries
+bool TestRandomRangeQueries() {
+    std::cout << "\n=== Test: Random Range Queries (100 iterations) ===" << std::endl;
+    
+    const std::string db_file = "test_random_range.db";
+    std::remove(db_file.c_str());
+    
+    TestBufferPool bpm(db_file);
+    BPlusTree<TestBufferPool> tree(&bpm, INVALID_PAGE_ID);
+    
+    // Insert 1000 keys
+    const int num_keys = 1000;
+    std::vector<uint64_t> inserted_keys;
+    for (uint64_t key = 1; key <= num_keys; key++) {
+        RID rid(key, key * 26);
+        inserted_keys.push_back(key);
+        if (!tree.Insert(key, rid)) {
+            std::cout << "  FAIL: Failed to insert key " << key << std::endl;
+            return false;
+        }
+    }
+    
+    std::cout << "  Inserted " << num_keys << " keys" << std::endl;
+    
+    // Run 100 random range queries
+    srand(time(nullptr));
+    int passed = 0;
+    int failed = 0;
+    
+    for (int i = 0; i < 100; i++) {
+        uint64_t l = (rand() % 1200) + 1; // Random from 1 to 1200
+        uint64_t r = (rand() % 1200) + 1; // Random from 1 to 1200
+        
+        if (l > r) {
+            std::swap(l, r);
+        }
+        
+        std::vector<std::pair<uint64_t, RID>> results;
+        if (!tree.RangeScan(l, r, results)) {
+            std::cout << "  FAIL: RangeScan returned false for range [" << l << ", " << r << "]" << std::endl;
+            failed++;
+            continue;
+        }
+        
+        // Verify results are sorted
+        if (!VerifyResultsSorted(results)) {
+            std::cout << "  FAIL: Results not sorted for range [" << l << ", " << r << "]" << std::endl;
+            failed++;
+            continue;
+        }
+        
+        // Verify results are in range
+        for (const auto& result : results) {
+            if (result.first < l || result.first > r) {
+                std::cout << "  FAIL: Key " << result.first << " outside range [" << l << ", " << r << "]" << std::endl;
+                failed++;
+                continue;
+            }
+        }
+        
+        // Compare with baseline (inserted keys)
+        std::vector<uint64_t> expected;
+        for (uint64_t key : inserted_keys) {
+            if (key >= l && key <= r) {
+                expected.push_back(key);
+            }
+        }
+        
+        if (results.size() != expected.size()) {
+            std::cout << "  FAIL: Expected " << expected.size() << " results, got " << results.size() << " for range [" << l << ", " << r << "]" << std::endl;
+            failed++;
+            continue;
+        }
+        
+        passed++;
+    }
+    
+    std::cout << "  Random range queries: " << passed << " passed, " << failed << " failed" << std::endl;
+    
+    if (failed > 0) {
+        std::cout << "  FAIL: Some random range queries failed" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  All random range queries passed" << std::endl;
+    
+    std::remove(db_file.c_str());
+    return true;
+}
+
 int main() {
     std::cout << "=== B+ Tree Comprehensive Test Suite ===" << std::endl;
     std::cout << "Starting test..." << std::endl;
@@ -529,6 +1093,96 @@ int main() {
     
     // Test 4: Deep Tree
     if (TestDeepTree()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 5: Small Range Scan
+    if (TestSmallRangeScan()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 6: Full Range Scan
+    if (TestFullRangeScan()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 7: Cross-Leaf Range Scan
+    if (TestCrossLeafRangeScan()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 8: Single-Key Range
+    if (TestSingleKeyRange()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 9: Empty Range
+    if (TestEmptyRange()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 10: Reverse Range
+    if (TestReverseRange()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 11: Boundary Split
+    if (TestBoundarySplit()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 12: First Leaf Edge
+    if (TestFirstLeafEdge()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 13: Last Leaf Edge
+    if (TestLastLeafEdge()) {
+        g_stats.RecordPass();
+        std::cout << "  ✅ PASS" << std::endl;
+    } else {
+        g_stats.RecordFail();
+        std::cout << "  ❌ FAIL" << std::endl;
+    }
+    
+    // Test 14: Random Range Queries
+    if (TestRandomRangeQueries()) {
         g_stats.RecordPass();
         std::cout << "  ✅ PASS" << std::endl;
     } else {

@@ -255,6 +255,101 @@ public:
     // Get the root page ID (for testing/validation)
     uint32_t GetRootPageId() const { return root_page_id_; }
     
+    // Find the leaf node that would contain a given key
+    // Returns the page_id of the leaf, or INVALID_PAGE_ID if tree is empty
+    uint32_t FindLeafForKey(uint64_t key) {
+        if (root_page_id_ == INVALID_PAGE_ID) {
+            return INVALID_PAGE_ID;
+        }
+        
+        uint32_t current_page_id = root_page_id_;
+        
+        while (true) {
+            Page* page = buffer_pool_->FetchPage(current_page_id);
+            if (!page) {
+                return INVALID_PAGE_ID;
+            }
+            
+            BPlusTreeNode node(page);
+            
+            if (node.IsLeaf()) {
+                buffer_pool_->UnpinPage(current_page_id, false);
+                return current_page_id;
+            } else {
+                uint32_t child_page_id = FindChild(node, key);
+                buffer_pool_->UnpinPage(current_page_id, false);
+                if (child_page_id == INVALID_PAGE_ID) {
+                    return INVALID_PAGE_ID;
+                }
+                current_page_id = child_page_id;
+            }
+        }
+    }
+    
+    // Range scan: collect all (key, RID) pairs in [start_key, end_key]
+    // Returns true if successful, results stored in output vector
+    bool RangeScan(uint64_t start_key, uint64_t end_key, std::vector<std::pair<uint64_t, RID>>& results) {
+        results.clear();
+        
+        // Handle edge case: start_key > end_key
+        if (start_key > end_key) {
+            return true; // Empty result is valid
+        }
+        
+        // Handle edge case: empty tree
+        if (root_page_id_ == INVALID_PAGE_ID) {
+            return true; // Empty result is valid
+        }
+        
+        // Find the first leaf node
+        uint32_t leaf_page_id = FindLeafForKey(start_key);
+        if (leaf_page_id == INVALID_PAGE_ID) {
+            return false;
+        }
+        
+        uint32_t current_page_id = leaf_page_id;
+        
+        while (current_page_id != INVALID_PAGE_ID) {
+            Page* page = buffer_pool_->FetchPage(current_page_id);
+            if (!page) {
+                return false;
+            }
+            
+            BPlusTreeNode node(page);
+            
+            if (!node.IsLeaf()) {
+                buffer_pool_->UnpinPage(current_page_id, false);
+                return false; // Should not happen
+            }
+            
+            uint16_t key_count = node.GetKeyCount();
+            
+            // Collect keys in range from this leaf
+            for (uint16_t i = 0; i < key_count; i++) {
+                uint64_t key = node.GetKey(i);
+                
+                // Stop if we've passed end_key
+                if (key > end_key) {
+                    buffer_pool_->UnpinPage(current_page_id, false);
+                    return true;
+                }
+                
+                // Add key if it's in range
+                if (key >= start_key) {
+                    RID rid = node.GetRID(i);
+                    results.push_back({key, rid});
+                }
+            }
+            
+            // Move to next leaf
+            uint32_t next_leaf_id = node.GetNextLeafPageId();
+            buffer_pool_->UnpinPage(current_page_id, false);
+            current_page_id = next_leaf_id;
+        }
+        
+        return true;
+    }
+    
     // Search for a key in the B+ Tree
     // Returns true if found, and sets rid to the record location
     bool Search(uint64_t key, RID& rid) {
