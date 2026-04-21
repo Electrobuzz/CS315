@@ -21,6 +21,10 @@ public:
     bool ReadPage(uint32_t page_id, Page& page);
     bool WritePage(uint32_t page_id, const Page& page);
     
+    // Page I/O operations with raw data (for BufferPoolManager compatibility)
+    bool ReadPage(uint32_t page_id, char* data);
+    bool WritePage(uint32_t page_id, const char* data);
+    
     // Page allocation
     uint32_t AllocatePage();
     bool DeallocatePage(uint32_t page_id);

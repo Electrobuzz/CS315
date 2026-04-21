@@ -1,6 +1,6 @@
 #pragma once
 
-#include "page.h"
+#include "page_v2.h"
 #include "../common/types.h"
 #include <unordered_map>
 #include <list>

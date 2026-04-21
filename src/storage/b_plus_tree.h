@@ -15,17 +15,6 @@ namespace minidb {
 class BufferPoolManager;
 class LogManager;
 
-// Record ID (RID) - points to a specific record
-struct RID {
-    uint32_t page_id;  // Page containing the record
-    uint32_t slot_id;  // Slot within the page
-    
-    RID() : page_id(INVALID_PAGE_ID), slot_id(0) {}
-    RID(uint32_t p, uint32_t s) : page_id(p), slot_id(s) {}
-    
-    bool IsValid() const { return page_id != INVALID_PAGE_ID; }
-};
-
 // B+ Tree node types
 enum class NodeType : uint8_t {
     INTERNAL = 0,
@@ -56,12 +45,13 @@ class BPlusTreeNode {
 public:
     static constexpr uint32_t PAGE_SIZE = 4096;
     
-    // Node header offsets
-    static constexpr uint32_t OFFSET_IS_LEAF = 0;
-    static constexpr uint32_t OFFSET_KEY_COUNT = 1;
-    static constexpr uint32_t OFFSET_PARENT_PAGE_ID = 3;
-    static constexpr uint32_t OFFSET_NEXT_LEAF = 7;
-    static constexpr uint32_t HEADER_SIZE = 11;
+    // Node header offsets (start after Page metadata to avoid overlap)
+    static constexpr uint32_t NODE_HEADER_OFFSET = 24;  // After Page metadata (offsets 0-23)
+    static constexpr uint32_t OFFSET_IS_LEAF = NODE_HEADER_OFFSET + 0;
+    static constexpr uint32_t OFFSET_KEY_COUNT = NODE_HEADER_OFFSET + 1;
+    static constexpr uint32_t OFFSET_PARENT_PAGE_ID = NODE_HEADER_OFFSET + 3;
+    static constexpr uint32_t OFFSET_NEXT_LEAF = NODE_HEADER_OFFSET + 7;
+    static constexpr uint32_t HEADER_SIZE = NODE_HEADER_OFFSET + 11;
     
     // Key configuration
     static constexpr uint32_t KEY_SIZE = 8;  // int64_t
@@ -277,7 +267,8 @@ template<typename BufferPoolType>
 class BPlusTree {
 public:
     BPlusTree(BufferPoolType* buffer_pool, uint32_t root_page_id, LogManager* log_manager = nullptr)
-        : buffer_pool_(buffer_pool), root_page_id_(root_page_id), log_manager_(log_manager) {}
+        : buffer_pool_(buffer_pool), root_page_id_(root_page_id), log_manager_(log_manager) {
+    }
     
     // Get the root page ID (for testing/validation)
     uint32_t GetRootPageId() const { return root_page_id_; }
@@ -303,36 +294,21 @@ public:
             BPlusTreeNode node(page);
             
             if (node.IsLeaf()) {
-                // Don't unpin yet - InsertLeaf or SplitLeafAndInsert will handle it
                 if (InsertLeaf(node, key, rid)) {
                     LogPageModification(page, LogRecordType::INSERT);
                     buffer_pool_->UnpinPage(current_page_id, true);
                     return true;
                 } else {
-                    bool result = SplitLeafAndInsert(path, key, rid);
-                    if (!result) {
-                        std::cerr << "Insert failed: SplitLeafAndInsert returned false for key " << key << std::endl;
-                    }
-                    return result;
+                    buffer_pool_->UnpinPage(current_page_id, false);
+                    return SplitLeafAndInsert(path, key, rid);
                 }
             } else {
+                // Internal node - find child
                 uint32_t child_page_id = FindChild(node, key);
                 buffer_pool_->UnpinPage(current_page_id, false);
-                if (child_page_id == INVALID_PAGE_ID) {
-                    std::cerr << "Insert failed: FindChild returned INVALID_PAGE_ID for key " << key << std::endl;
-                    return false;
-                }
                 current_page_id = child_page_id;
             }
         }
-    }
-    
-    bool Delete(uint64_t key) {
-        if (root_page_id_ == INVALID_PAGE_ID) {
-            return false;
-        }
-        
-        return DeleteInternal(key);
     }
     
     bool Search(uint64_t key, RID& rid) {
@@ -355,33 +331,26 @@ public:
                 buffer_pool_->UnpinPage(current_page_id, false);
                 return found;
             } else {
+                // Internal node - find child
                 uint32_t child_page_id = FindChild(node, key);
                 buffer_pool_->UnpinPage(current_page_id, false);
-                if (child_page_id == INVALID_PAGE_ID) {
-                    return false;
-                }
                 current_page_id = child_page_id;
             }
         }
     }
     
-    bool RangeScan(uint64_t start_key, uint64_t end_key, std::vector<std::pair<uint64_t, RID>>& results) {
-        results.clear();
-        
+    void RangeScan(uint64_t start, uint64_t end, std::vector<std::pair<uint64_t, RID>>& results) {
         if (root_page_id_ == INVALID_PAGE_ID) {
-            return true;
-        }
-        
-        if (start_key > end_key) {
-            return true;
+            return;
         }
         
         uint32_t current_page_id = root_page_id_;
         
+        // Traverse to the leftmost leaf node
         while (true) {
             Page* page = buffer_pool_->FetchPage(current_page_id);
             if (!page) {
-                return false;
+                return;
             }
             
             BPlusTreeNode node(page);
@@ -389,49 +358,38 @@ public:
             if (node.IsLeaf()) {
                 buffer_pool_->UnpinPage(current_page_id, false);
                 break;
+            } else {
+                // Internal node - go to leftmost child
+                current_page_id = node.GetChildPageId(0);
+                buffer_pool_->UnpinPage(current_page_id, false);
             }
-            
-            uint32_t child_page_id = FindChild(node, start_key);
-            buffer_pool_->UnpinPage(current_page_id, false);
-            if (child_page_id == INVALID_PAGE_ID) {
-                return false;
-            }
-            current_page_id = child_page_id;
         }
         
-        uint32_t iteration_count = 0;
-        const int MAX_ITERATIONS = 10000;
-        
+        // Scan leaf nodes from left to right
         while (current_page_id != INVALID_PAGE_ID) {
-            iteration_count++;
-            if (iteration_count > MAX_ITERATIONS) {
-                std::cerr << "Error: RangeScan exceeded max iterations (" << MAX_ITERATIONS << ") - possible infinite loop" << std::endl;
-                return false;
-            }
-            
             Page* page = buffer_pool_->FetchPage(current_page_id);
             if (!page) {
-                return false;
+                return;
             }
             
             BPlusTreeNode node(page);
             
+            // Get all keys and RIDs in this leaf that are in range
             uint16_t key_count = node.GetKeyCount();
             for (uint16_t i = 0; i < key_count; i++) {
                 uint64_t key = node.GetKey(i);
-                if (key >= start_key && key <= end_key) {
-                    RID rid = node.GetRID(i);
-                    results.push_back({key, rid});
-                } else if (key > end_key) {
+                if (key >= start && key <= end) {
+                    results.push_back({key, node.GetRID(i)});
+                } else if (key > end) {
+                    // No more keys in range
                     break;
                 }
             }
             
+            // Move to next leaf
             current_page_id = node.GetNextLeafPageId();
             buffer_pool_->UnpinPage(page->GetPageId(), false);
         }
-        
-        return true;
     }
     
 private:

@@ -7,6 +7,8 @@
 
 namespace minidb {
 
+class HeapFile;
+
 struct Column {
     std::string name;
     DataType type;
@@ -44,12 +46,17 @@ public:
     const std::string& GetTableName() const { return table_name_; }
     std::shared_ptr<Schema> GetSchema() const { return schema_; }
     page_id_t GetRootPageId() const { return root_page_id_; }
+    void SetRootPageId(page_id_t root_page_id) { root_page_id_ = root_page_id; }
+    
+    HeapFile* GetHeapFile() const { return heap_file_; }
+    void SetHeapFile(HeapFile* heap_file) { heap_file_ = heap_file; }
 
 private:
     table_id_t table_id_;
     std::string table_name_;
     std::shared_ptr<Schema> schema_;
     page_id_t root_page_id_;
+    HeapFile* heap_file_;
 };
 
 }

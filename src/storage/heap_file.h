@@ -2,6 +2,9 @@
 
 #include "page_v2.h"
 #include "disk_manager_v2.h"
+#include "buffer_pool_manager.h"
+#include "../common/tuple.h"
+#include "../common/types.h"
 #include <vector>
 #include <memory>
 
@@ -9,7 +12,7 @@ namespace minidb {
 
 class HeapFile {
 public:
-    explicit HeapFile(const std::string& filename);
+    HeapFile(const std::string& filename, BufferPoolManager* buffer_pool = nullptr);
     ~HeapFile();
     
     // File operations
@@ -18,7 +21,8 @@ public:
     bool IsOpen() const { return disk_manager_ != nullptr && disk_manager_->IsOpen(); }
     
     // Record operations
-    bool InsertRecord(const char* record_data, uint32_t record_size);
+    bool InsertRecord(const char* record_data, uint32_t record_size, RID& rid);
+    bool GetTuple(RID rid, Tuple& tuple);
     
     // Scan operations
     class ScanIterator {
@@ -49,10 +53,11 @@ public:
 
 private:
     std::unique_ptr<DiskManager> disk_manager_;
+    BufferPoolManager* buffer_pool_;  // Not owned, for GetTuple operations
     uint32_t record_count_;
     
     // Internal helper methods
-    bool FindSpaceInExistingPages(const char* record_data, uint32_t record_size);
+    bool FindSpaceInExistingPages(const char* record_data, uint32_t record_size, RID& rid);
     bool AllocateNewPage();
     bool WriteCurrentPage();
     

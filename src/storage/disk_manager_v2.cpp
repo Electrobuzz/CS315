@@ -69,7 +69,6 @@ bool DiskManager::ReadPage(uint32_t page_id, Page& page) {
         // Page doesn't exist or read failed, return empty page
         page.Reset();
         page.SetPageId(page_id);
-        return true;
     }
     
     return true;
@@ -95,6 +94,47 @@ bool DiskManager::WritePage(uint32_t page_id, const Page& page) {
     return true;
 }
 
+bool DiskManager::ReadPage(uint32_t page_id, char* data) {
+    std::lock_guard<std::mutex> lock(io_mutex_);
+    
+    if (!ValidatePageId(page_id)) {
+        return false;
+    }
+    
+    if (!SeekToPage(page_id)) {
+        return false;
+    }
+    
+    file_stream_.read(data, Page::SIZE);
+    if (file_stream_.fail() || file_stream_.gcount() != Page::SIZE) {
+        // Page doesn't exist or read failed, return empty page
+        std::memset(data, 0, Page::SIZE);
+        return true;
+    }
+    
+    return true;
+}
+
+bool DiskManager::WritePage(uint32_t page_id, const char* data) {
+    std::lock_guard<std::mutex> lock(io_mutex_);
+    
+    if (!ValidatePageId(page_id)) {
+        return false;
+    }
+    
+    if (!SeekToPage(page_id)) {
+        return false;
+    }
+    
+    file_stream_.write(data, Page::SIZE);
+    if (file_stream_.fail()) {
+        return false;
+    }
+    
+    file_stream_.flush();
+    return true;
+}
+
 uint32_t DiskManager::AllocatePage() {
     std::lock_guard<std::mutex> lock(io_mutex_);
     
@@ -105,12 +145,18 @@ uint32_t DiskManager::AllocatePage() {
     new_page.Reset();
     new_page.SetPageId(page_id);
     
-    if (!WritePage(page_id, new_page)) {
-        // Rollback on failure
+    if (!SeekToPage(page_id)) {
         next_page_id_--;
         return INVALID_PAGE_ID;
     }
     
+    file_stream_.write(new_page.GetData(), Page::SIZE);
+    if (file_stream_.fail()) {
+        next_page_id_--;
+        return INVALID_PAGE_ID;
+    }
+    
+    file_stream_.flush();
     return page_id;
 }
 

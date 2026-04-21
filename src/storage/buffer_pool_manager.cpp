@@ -39,6 +39,7 @@ Page* BufferPoolManager::FetchPage(page_id_t page_id) {
     }
     
     Frame* frame = frames_[frame_id].get();
+    
     if (frame->is_dirty) {
         WritePageToDisk(frame->page.GetPageId(), frame);
     }
@@ -83,14 +84,13 @@ bool BufferPoolManager::FlushPage(page_id_t page_id) {
 Page* BufferPoolManager::NewPage(page_id_t& page_id) {
     std::lock_guard<std::mutex> guard(latch_);
     
-    page_id = disk_manager_->AllocatePage();
-    
     frame_id_t frame_id = FindVictimFrame();
     if (frame_id == INVALID_FRAME_ID) {
         return nullptr;
     }
     
     Frame* frame = frames_[frame_id].get();
+    
     if (frame->is_dirty) {
         WritePageToDisk(frame->page.GetPageId(), frame);
     }
@@ -99,13 +99,18 @@ Page* BufferPoolManager::NewPage(page_id_t& page_id) {
         page_table_.erase(frame->page.GetPageId());
     }
     
+    page_id = disk_manager_->AllocatePage();
+    if (page_id == INVALID_PAGE_ID) {
+        return nullptr;
+    }
+    
+    // Initialize the page with the correct layout
     frame->page.Reset();
     frame->page.SetPageId(page_id);
-    frame->is_dirty = false;
+    frame->is_dirty = true;
     frame->pin_count = 1;
     
     page_table_[page_id] = frame_id;
-    UpdateLRU(frame_id);
     
     return &frame->page;
 }
@@ -173,22 +178,18 @@ void BufferPoolManager::FlushAllPages() {
 }
 
 frame_id_t BufferPoolManager::FindVictimFrame() {
-    if (!free_list_.empty()) {
-        for (size_t i = 0; i < free_list_.size(); ++i) {
-            if (free_list_[i]) {
-                free_list_[i] = false;
-                return static_cast<frame_id_t>(i);
-            }
+    for (size_t i = 0; i < pool_size_; ++i) {
+        if (free_list_[i]) {
+            free_list_[i] = false;
+            return i;
         }
     }
     
+    // No free frame, use LRU
     if (!lru_list_.empty()) {
-        frame_id_t frame_id = lru_list_.front();
-        if (frames_[frame_id]->pin_count == 0) {
-            lru_list_.pop_front();
-            frames_[frame_id]->lru_iter = lru_list_.end();
-            return frame_id;
-        }
+        frame_id_t frame_id = lru_list_.back();
+        lru_list_.pop_back();
+        return frame_id;
     }
     
     return INVALID_FRAME_ID;

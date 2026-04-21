@@ -3,8 +3,8 @@
 
 namespace minidb {
 
-HeapFile::HeapFile(const std::string& filename) 
-    : record_count_(0), current_page_index_(0) {
+HeapFile::HeapFile(const std::string& filename, BufferPoolManager* buffer_pool) 
+    : buffer_pool_(buffer_pool), record_count_(0), current_page_index_(0) {
     disk_manager_ = std::make_unique<DiskManager>(filename);
 }
 
@@ -13,27 +13,37 @@ HeapFile::~HeapFile() {
 }
 
 bool HeapFile::Open() {
-    if (!disk_manager_->IsOpen()) {
+    if (!disk_manager_) {
         return false;
     }
     
-    // Load existing pages (for now, we'll scan to find all pages)
-    // In a real implementation, this would be stored in a metadata page
-    page_ids_.clear();
+    // Read page count from disk
     uint32_t page_count = disk_manager_->GetPageCount();
+    if (page_count == 0) {
+        // New file - start with empty page list
+        page_ids_.clear();
+        current_page_index_ = 0;
+        return true;
+    }
     
-    for (uint32_t i = 1; i <= page_count; ++i) {
+    // Load page IDs from disk (assume sequential for now)
+    page_ids_.clear();
+    for (uint32_t i = 0; i < page_count; i++) {
         page_ids_.push_back(i);
     }
     
     if (page_ids_.empty()) {
-        // No pages exist, create the first one
-        return AllocateNewPage();
+        return true;
     }
     
-    // Load the first page as current
     current_page_index_ = 0;
-    return disk_manager_->ReadPage(page_ids_[current_page_index_], current_page_);
+    
+    // Load first page using DiskManager
+    if (!disk_manager_->ReadPage(page_ids_[current_page_index_], current_page_)) {
+        return false;
+    }
+    
+    return true;
 }
 
 void HeapFile::Close() {
@@ -42,15 +52,31 @@ void HeapFile::Close() {
     }
 }
 
-bool HeapFile::InsertRecord(const char* record_data, uint32_t record_size) {
+bool HeapFile::InsertRecord(const char* record_data, uint32_t record_size, RID& rid) {
     if (!IsOpen() || !record_data || record_size == 0) {
         return false;
     }
     
     // Try to find space in existing pages
-    if (FindSpaceInExistingPages(record_data, record_size)) {
-        record_count_++;
-        return true;
+    for (size_t page_index = 0; page_index < page_ids_.size(); ++page_index) {
+        uint32_t page_id = page_ids_[page_index];
+        
+        if (!disk_manager_->ReadPage(page_id, current_page_)) {
+            continue;
+        }
+        
+        uint32_t slot_id;
+        if (current_page_.InsertRecord(record_data, record_size, slot_id)) {
+            rid = RID(page_id, slot_id);
+            current_page_index_ = page_index;
+            // Write the modified page back to disk
+            if (!disk_manager_->WritePage(page_id, current_page_)) {
+                std::cerr << "[ERROR] HeapFile::InsertRecord: failed to write page " << page_id << std::endl;
+                return false;
+            }
+            record_count_++;
+            return true;
+        }
     }
     
     // If no space found, allocate new page
@@ -62,35 +88,8 @@ bool HeapFile::InsertRecord(const char* record_data, uint32_t record_size) {
     uint32_t slot_id;
     if (current_page_.InsertRecord(record_data, record_size, slot_id)) {
         record_count_++;
+        rid = RID(page_ids_[current_page_index_], slot_id);
         return WriteCurrentPage();
-    }
-    
-    return false;
-}
-
-bool HeapFile::FindSpaceInExistingPages(const char* record_data, uint32_t record_size) {
-    // Start from current page and search all pages
-    uint32_t start_index = current_page_index_;
-    
-    for (uint32_t i = 0; i < page_ids_.size(); ++i) {
-        uint32_t page_index = (start_index + i) % page_ids_.size();
-        
-        // Load page if not current
-        if (page_index != current_page_index_) {
-            if (!WriteCurrentPage()) {
-                return false;
-            }
-            current_page_index_ = page_index;
-            if (!disk_manager_->ReadPage(page_ids_[page_index], current_page_)) {
-                return false;
-            }
-        }
-        
-        // Try to insert record
-        uint32_t slot_id;
-        if (current_page_.InsertRecord(record_data, record_size, slot_id)) {
-            return WriteCurrentPage();
-        }
     }
     
     return false;
@@ -124,11 +123,13 @@ bool HeapFile::AllocateNewPage() {
 }
 
 bool HeapFile::WriteCurrentPage() {
-    if (current_page_index_ >= page_ids_.size()) {
+    if (!disk_manager_ || current_page_index_ >= page_ids_.size()) {
         return false;
     }
     
-    return disk_manager_->WritePage(page_ids_[current_page_index_], current_page_);
+    uint32_t page_id = page_ids_[current_page_index_];
+    
+    return disk_manager_->WritePage(page_id, current_page_);
 }
 
 uint32_t HeapFile::GetPageCount() const {
@@ -137,6 +138,35 @@ uint32_t HeapFile::GetPageCount() const {
 
 uint32_t HeapFile::GetRecordCount() const {
     return record_count_;
+}
+
+bool HeapFile::GetTuple(RID rid, Tuple& tuple) {
+    if (!disk_manager_ || rid.page_id == INVALID_PAGE_ID) {
+        return false;
+    }
+    
+    
+    // Read page using DiskManager
+    if (!disk_manager_->ReadPage(rid.page_id, current_page_)) {
+        std::cerr << "[ERROR] HeapFile::GetTuple: failed to read page " << rid.page_id << std::endl;
+        return false;
+    }
+    
+    // Read record from page
+    char buffer[Tuple::GetSize()];
+    uint32_t actual_size = 0;
+    
+    bool success = current_page_.GetRecord(rid.slot_id, buffer, Tuple::GetSize(), actual_size);
+    
+    if (!success || actual_size != Tuple::GetSize()) {
+        std::cerr << "[ERROR] HeapFile::GetTuple: GetRecord failed, success=" << success 
+                  << " actual_size=" << actual_size << " expected=" << Tuple::GetSize() << std::endl;
+        return false;
+    }
+    
+    // Deserialize into tuple
+    tuple.Deserialize(buffer);
+    return true;
 }
 
 // ScanIterator implementation

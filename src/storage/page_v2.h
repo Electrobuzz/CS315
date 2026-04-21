@@ -1,12 +1,10 @@
 #pragma once
 
+#include "../common/types.h"
 #include <cstdint>
 #include <cstring>
 
 namespace minidb {
-
-constexpr uint32_t PAGE_SIZE = 4096;
-constexpr uint32_t INVALID_PAGE_ID = 0;
 
 class Page {
 public:
@@ -30,15 +28,17 @@ public:
     static constexpr uint32_t OFFSET_FREE_SLOT_COUNT = 12;
     static constexpr uint32_t HEADER_SIZE = 24;
     
-    // Slot directory entry (8 bytes each)
-    // Offset 0-3: offset (uint32_t)
-    // Offset 4-7: length (uint32_t)
+    // Slot directory layout (fixed region after header)
+    //   Each slot: offset (uint32_t, 4 bytes) + length (uint32_t, 4 bytes) = 8 bytes
     static constexpr uint32_t SLOT_SIZE = 8;
     static constexpr uint32_t SLOT_OFFSET_OFFSET = 0;
     static constexpr uint32_t SLOT_LENGTH_OFFSET = 4;
     
-    static constexpr uint32_t DATA_AREA_OFFSET = HEADER_SIZE;
-    static constexpr uint32_t DATA_AREA_SIZE = SIZE - HEADER_SIZE;
+    static constexpr uint32_t SLOT_DIRECTORY_OFFSET = HEADER_SIZE;  // Slot directory starts after header (offset 24)
+    static constexpr uint32_t MAX_SLOTS = 256;  // Maximum slots per page
+    static constexpr uint32_t SLOT_DIRECTORY_SIZE = MAX_SLOTS * SLOT_SIZE;  // Fixed slot directory region (2048 bytes)
+    static constexpr uint32_t RECORD_AREA_OFFSET = SLOT_DIRECTORY_OFFSET + SLOT_DIRECTORY_SIZE;  // Records start after slot directory (offset 2072)
+    static constexpr uint32_t RECORD_AREA_SIZE = SIZE - RECORD_AREA_OFFSET - 8;  // Remaining space for records (minus 8 bytes for LSN)
 
 private:
     char data_[SIZE];
@@ -66,27 +66,27 @@ private:
     
     // Slot access methods
     uint32_t GetSlotOffset(uint32_t slot_id) const {
-        return DATA_AREA_OFFSET + slot_id * SLOT_SIZE + SLOT_OFFSET_OFFSET;
+        return ReadUint32(SLOT_DIRECTORY_OFFSET + slot_id * SLOT_SIZE + SLOT_OFFSET_OFFSET);
     }
     
     uint32_t GetSlotLength(uint32_t slot_id) const {
-        return ReadUint32(DATA_AREA_OFFSET + slot_id * SLOT_SIZE + SLOT_LENGTH_OFFSET);
+        return ReadUint32(SLOT_DIRECTORY_OFFSET + slot_id * SLOT_SIZE + SLOT_LENGTH_OFFSET);
     }
     
     void SetSlotOffset(uint32_t slot_id, uint32_t offset) {
-        WriteUint32(DATA_AREA_OFFSET + slot_id * SLOT_SIZE + SLOT_OFFSET_OFFSET, offset);
+        WriteUint32(SLOT_DIRECTORY_OFFSET + slot_id * SLOT_SIZE + SLOT_OFFSET_OFFSET, offset);
     }
     
     void SetSlotLength(uint32_t slot_id, uint32_t length) {
-        WriteUint32(DATA_AREA_OFFSET + slot_id * SLOT_SIZE + SLOT_LENGTH_OFFSET, length);
+        WriteUint32(SLOT_DIRECTORY_OFFSET + slot_id * SLOT_SIZE + SLOT_LENGTH_OFFSET, length);
     }
     
     char* GetDataArea() { 
-        return data_ + DATA_AREA_OFFSET; 
+        return data_ + RECORD_AREA_OFFSET; 
     }
     
     const char* GetDataArea() const { 
-        return data_ + DATA_AREA_OFFSET; 
+        return data_ + RECORD_AREA_OFFSET; 
     }
 
 public:

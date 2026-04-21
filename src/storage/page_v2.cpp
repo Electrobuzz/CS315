@@ -1,5 +1,7 @@
 #include "page_v2.h"
+#include <cstring>
 #include <stdexcept>
+#include <iostream>
 
 namespace minidb {
 
@@ -11,16 +13,15 @@ void Page::Reset() {
     std::memset(data_, 0, SIZE);
     
     SetPageId(INVALID_PAGE_ID);
-    SetFreeSpaceOffset(DATA_AREA_SIZE);  // Start from end of data area
+    SetFreeSpaceOffset(RECORD_AREA_SIZE);  // Start from end of record area
     SetSlotCount(0);
     SetFreeSlotCount(0);
     SetLastLSN(0);  // Initialize LSN to 0
 }
 
 uint32_t Page::GetFreeSpace() const {
-    uint32_t slot_directory_size = GetSlotCount() * SLOT_SIZE;
-    uint32_t used_space = DATA_AREA_SIZE - GetFreeSpaceOffset() + slot_directory_size;
-    return DATA_AREA_SIZE - used_space;
+    uint32_t used_record_space = RECORD_AREA_SIZE - GetFreeSpaceOffset();
+    return RECORD_AREA_SIZE - used_record_space;
 }
 
 bool Page::HasSpaceFor(uint32_t record_size) const {
@@ -39,6 +40,12 @@ bool Page::IsSlotUsed(uint32_t slot_id) const {
 
 bool Page::InsertRecord(const char* record_data, uint32_t record_size, uint32_t& slot_id) {
     if (!record_data || record_size == 0) {
+        return false;
+    }
+    
+    // Check if we have space for a new slot
+    if (GetSlotCount() >= MAX_SLOTS) {
+        std::cerr << "[ERROR] Page::InsertRecord: maximum slots exceeded" << std::endl;
         return false;
     }
     
@@ -63,21 +70,22 @@ bool Page::InsertRecord(const char* record_data, uint32_t record_size, uint32_t&
         SetSlotCount(GetSlotCount() + 1);
     }
     
-    // Calculate record position (grow from top of data area)
-    uint32_t record_offset = GetFreeSpaceOffset() - record_size;
+    // Calculate offset for new record (grow from end of record area)
+    uint32_t new_offset = GetFreeSpaceOffset() - record_size;
     
-    // Copy record data
+    // Write record data
     char* data_area = GetDataArea();
-    std::memcpy(data_area + record_offset, record_data, record_size);
+    std::memcpy(data_area + new_offset, record_data, record_size);
     
-    // Update slot
-    SetSlotOffset(target_slot_id, record_offset);
+    // Update slot directory (offset is relative to RECORD_AREA_OFFSET)
+    SetSlotOffset(target_slot_id, new_offset);
     SetSlotLength(target_slot_id, record_size);
     
-    // Update header
-    SetFreeSpaceOffset(record_offset);
+    // Update free space pointer
+    SetFreeSpaceOffset(new_offset);
     
     slot_id = target_slot_id;
+    
     return true;
 }
 
@@ -118,6 +126,7 @@ bool Page::GetRecord(uint32_t slot_id, char* buffer, uint32_t buffer_size, uint3
     
     std::memcpy(buffer, data_area + record_offset, record_length);
     actual_size = record_length;
+    
     return true;
 }
 

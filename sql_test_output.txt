@@ -1,0 +1,231 @@
+=== SQL Layer Test Suite ===
+=== Test: Parser ===
+  CREATE TABLE parsed correctly
+  INSERT parsed correctly
+  SELECT with WHERE id = X parsed correctly
+  SELECT with WHERE id BETWEEN parsed correctly
+  ✅ PASS
+=== Test: Catalog ===
+  PASS
+=== Test: Planner ===
+  SELECT without predicate -> SeqScanPlan
+  SELECT with WHERE id = X -> IndexScanPlan
+  SELECT with WHERE id BETWEEN -> IndexRangeScanPlan
+  INSERT -> InsertPlan
+  PASS
+=== Test: End-to-End Pipeline ===
+  CREATE TABLE: DDL handled correctly
+  Inserting 1000 rows...
+  Inserted 1000 rows successfully
+  Query by key (id = 500)...
+  Query by key successful
+  Range query (id BETWEEN 100 AND 200)...
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=100 rid.page_id=1 slot_id=98
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=100 value=1000
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=101 rid.page_id=1 slot_id=99
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=101 value=1010
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=102 rid.page_id=1 slot_id=100
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=102 value=1020
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=103 rid.page_id=1 slot_id=101
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=103 value=1030
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=104 rid.page_id=1 slot_id=102
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=104 value=1040
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=105 rid.page_id=1 slot_id=103
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=105 value=1050
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=106 rid.page_id=1 slot_id=104
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=106 value=1060
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=107 rid.page_id=1 slot_id=105
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=107 value=1070
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=108 rid.page_id=1 slot_id=106
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=108 value=1080
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=109 rid.page_id=1 slot_id=107
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=109 value=1090
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=110 rid.page_id=1 slot_id=108
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=110 value=1100
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=111 rid.page_id=1 slot_id=109
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=111 value=1110
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=112 rid.page_id=1 slot_id=110
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=112 value=1120
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=113 rid.page_id=1 slot_id=111
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=113 value=1130
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=114 rid.page_id=1 slot_id=112
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=114 value=1140
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=115 rid.page_id=1 slot_id=113
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=115 value=1150
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=116 rid.page_id=1 slot_id=114
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=116 value=1160
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=117 rid.page_id=1 slot_id=115
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=117 value=1170
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=118 rid.page_id=1 slot_id=116
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=118 value=1180
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=119 rid.page_id=1 slot_id=117
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=119 value=1190
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=120 rid.page_id=1 slot_id=118
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=120 value=1200
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=121 rid.page_id=1 slot_id=119
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=121 value=1210
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=122 rid.page_id=1 slot_id=120
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=122 value=1220
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=123 rid.page_id=1 slot_id=121
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=123 value=1230
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=124 rid.page_id=1 slot_id=122
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=124 value=1240
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=125 rid.page_id=1 slot_id=123
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=125 value=1250
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=126 rid.page_id=1 slot_id=124
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=126 value=1260
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=127 rid.page_id=1 slot_id=125
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=127 value=1270
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=128 rid.page_id=1 slot_id=126
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=128 value=1280
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=129 rid.page_id=1 slot_id=127
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=129 value=1290
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=130 rid.page_id=1 slot_id=128
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=130 value=1300
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=131 rid.page_id=1 slot_id=129
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=131 value=1310
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=132 rid.page_id=1 slot_id=130
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=132 value=1320
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=133 rid.page_id=1 slot_id=131
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=133 value=1330
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=134 rid.page_id=1 slot_id=132
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=134 value=1340
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=135 rid.page_id=1 slot_id=133
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=135 value=1350
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=136 rid.page_id=1 slot_id=134
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=136 value=1360
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=137 rid.page_id=1 slot_id=135
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=137 value=1370
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=138 rid.page_id=1 slot_id=136
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=138 value=1380
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=139 rid.page_id=1 slot_id=137
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=139 value=1390
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=140 rid.page_id=1 slot_id=138
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=140 value=1400
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=141 rid.page_id=1 slot_id=139
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=141 value=1410
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=142 rid.page_id=1 slot_id=140
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=142 value=1420
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=143 rid.page_id=1 slot_id=141
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=143 value=1430
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=144 rid.page_id=1 slot_id=142
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=144 value=1440
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=145 rid.page_id=1 slot_id=143
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=145 value=1450
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=146 rid.page_id=1 slot_id=144
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=146 value=1460
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=147 rid.page_id=1 slot_id=145
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=147 value=1470
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=148 rid.page_id=1 slot_id=146
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=148 value=1480
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=149 rid.page_id=1 slot_id=147
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=149 value=1490
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=150 rid.page_id=1 slot_id=148
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=150 value=1500
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=151 rid.page_id=1 slot_id=149
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=151 value=1510
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=152 rid.page_id=1 slot_id=150
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=152 value=1520
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=153 rid.page_id=1 slot_id=151
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=153 value=1530
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=154 rid.page_id=1 slot_id=152
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=154 value=1540
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=155 rid.page_id=1 slot_id=153
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=155 value=1550
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=156 rid.page_id=1 slot_id=154
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=156 value=1560
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=157 rid.page_id=1 slot_id=155
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=157 value=1570
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=158 rid.page_id=1 slot_id=156
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=158 value=1580
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=159 rid.page_id=1 slot_id=157
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=159 value=1590
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=160 rid.page_id=1 slot_id=158
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=160 value=1600
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=161 rid.page_id=1 slot_id=159
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=161 value=1610
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=162 rid.page_id=1 slot_id=160
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=162 value=1620
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=163 rid.page_id=1 slot_id=161
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=163 value=1630
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=164 rid.page_id=1 slot_id=162
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=164 value=1640
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=165 rid.page_id=1 slot_id=163
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=165 value=1650
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=166 rid.page_id=1 slot_id=164
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=166 value=1660
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=167 rid.page_id=1 slot_id=165
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=167 value=1670
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=168 rid.page_id=1 slot_id=166
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=168 value=1680
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=169 rid.page_id=1 slot_id=167
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=169 value=1690
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=170 rid.page_id=1 slot_id=168
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=170 value=1700
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=171 rid.page_id=1 slot_id=169
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=171 value=1710
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=172 rid.page_id=1 slot_id=170
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=172 value=1720
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=173 rid.page_id=1 slot_id=171
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=173 value=1730
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=174 rid.page_id=1 slot_id=172
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=174 value=1740
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=175 rid.page_id=1 slot_id=173
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=175 value=1750
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=176 rid.page_id=1 slot_id=174
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=176 value=1760
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=177 rid.page_id=1 slot_id=175
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=177 value=1770
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=178 rid.page_id=1 slot_id=176
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=178 value=1780
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=179 rid.page_id=1 slot_id=177
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=179 value=1790
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=180 rid.page_id=1 slot_id=178
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=180 value=1800
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=181 rid.page_id=1 slot_id=179
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=181 value=1810
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=182 rid.page_id=1 slot_id=180
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=182 value=1820
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=183 rid.page_id=1 slot_id=181
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=183 value=1830
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=184 rid.page_id=1 slot_id=182
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=184 value=1840
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=185 rid.page_id=1 slot_id=183
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=185 value=1850
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=186 rid.page_id=1 slot_id=184
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=186 value=1860
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=187 rid.page_id=1 slot_id=185
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=187 value=1870
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=188 rid.page_id=1 slot_id=186
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=188 value=1880
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=189 rid.page_id=1 slot_id=187
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=189 value=1890
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=190 rid.page_id=1 slot_id=188
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=190 value=1900
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=191 rid.page_id=1 slot_id=189
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=191 value=1910
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=192 rid.page_id=1 slot_id=190
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=192 value=1920
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=193 rid.page_id=1 slot_id=191
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=193 value=1930
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=194 rid.page_id=1 slot_id=192
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=194 value=1940
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=195 rid.page_id=1 slot_id=193
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=195 value=1950
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=196 rid.page_id=1 slot_id=194
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=196 value=1960
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=197 rid.page_id=1 slot_id=195
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=197 value=1970
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=198 rid.page_id=1 slot_id=196
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=198 value=1980
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=199 rid.page_id=1 slot_id=197
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=199 value=1990
+[DEBUG] IndexRangeScanExecutor::Next: fetching tuple for key=200 rid.page_id=1 slot_id=198
+[DEBUG] IndexRangeScanExecutor::Next: fetched tuple id=200 value=2000
+  Range query returned 101 tuples
+  Range query successful
+  PASS
+=== Test Summary ===
+Total: 4
+Passed: 4
+Failed: 0

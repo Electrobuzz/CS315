@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <limits>
 
 namespace minidb {
 
@@ -14,7 +15,7 @@ using column_id_t = uint32_t;
 
 constexpr uint32_t PAGE_SIZE = 4096;
 constexpr uint32_t INVALID_PAGE_ID = 0;
-constexpr uint32_t INVALID_FRAME_ID = 0;
+constexpr uint32_t INVALID_FRAME_ID = std::numeric_limits<uint32_t>::max();
 constexpr uint32_t INVALID_TABLE_ID = 0;
 
 enum class DataType {
@@ -52,6 +53,18 @@ public:
     
     Record() = default;
     explicit Record(const std::vector<Value>& vals) : values(vals) {}
+};
+
+struct RID {
+    uint32_t page_id;
+    uint32_t slot_id;
+    
+    RID() : page_id(INVALID_PAGE_ID), slot_id(0) {}
+    RID(uint32_t p, uint32_t s) : page_id(p), slot_id(s) {}
+    
+    bool operator==(const RID& other) const {
+        return page_id == other.page_id && slot_id == other.slot_id;
+    }
 };
 
 }

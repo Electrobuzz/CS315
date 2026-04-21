@@ -59,6 +59,6 @@ size_t Schema::GetRowSize() const {
 TableInfo::TableInfo(table_id_t table_id, const std::string& table_name, 
                      std::shared_ptr<Schema> schema, page_id_t root_page_id)
     : table_id_(table_id), table_name_(table_name), 
-      schema_(schema), root_page_id_(root_page_id) {}
+      schema_(schema), root_page_id_(root_page_id), heap_file_(nullptr) {}
 
 }
