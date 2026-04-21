@@ -91,6 +91,7 @@ bool DiskManager::WritePage(uint32_t page_id, const Page& page) {
     }
     
     file_stream_.flush();
+    file_stream_.sync();  // Sync to OS buffer cache
     return true;
 }
 

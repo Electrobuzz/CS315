@@ -115,9 +115,11 @@ bool HeapFile::AllocateNewPage() {
     page_ids_.push_back(new_page_id);
     current_page_index_ = page_ids_.size() - 1;
     
-    // Reset and initialize new page
+    // Reset and initialize new page (in-memory only)
     current_page_.Reset();
     current_page_.SetPageId(new_page_id);
+    
+    // Don't write empty page to disk - wait for actual data insertion
     
     return true;
 }
