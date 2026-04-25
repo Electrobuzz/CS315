@@ -3,13 +3,29 @@
 
 namespace minidb {
 
-HeapFile::HeapFile(const std::string& filename, BufferPoolManager* buffer_pool) 
-    : buffer_pool_(buffer_pool), record_count_(0), current_page_index_(0) {
-    disk_manager_ = std::make_unique<DiskManager>(filename);
+HeapFile::HeapFile(const std::string& filename, BufferPoolManager* buffer_pool)
+    : disk_manager_(new DiskManager(filename)),
+      owns_disk_manager_(true),
+      buffer_pool_(buffer_pool),
+      record_count_(0),
+      is_open_(false),
+      current_page_index_(0) {
+}
+
+HeapFile::HeapFile(DiskManager* disk_manager, BufferPoolManager* buffer_pool)
+    : disk_manager_(disk_manager),
+      owns_disk_manager_(false),
+      buffer_pool_(buffer_pool),
+      record_count_(0),
+      is_open_(false),
+      current_page_index_(0) {
 }
 
 HeapFile::~HeapFile() {
     Close();
+    if (owns_disk_manager_ && disk_manager_) {
+        delete disk_manager_;
+    }
 }
 
 bool HeapFile::Open() {
@@ -23,16 +39,19 @@ bool HeapFile::Open() {
         // New file - start with empty page list
         page_ids_.clear();
         current_page_index_ = 0;
+        is_open_ = true;
         return true;
     }
     
-    // Load page IDs from disk (assume sequential for now)
+    // Always reload page_ids from disk to get the latest state
+    // This is important when multiple HeapFile instances share the same file
     page_ids_.clear();
-    for (uint32_t i = 0; i < page_count; i++) {
+    for (uint32_t i = 1; i <= page_count; i++) {
         page_ids_.push_back(i);
     }
     
     if (page_ids_.empty()) {
+        is_open_ = true;
         return true;
     }
     
@@ -43,6 +62,7 @@ bool HeapFile::Open() {
         return false;
     }
     
+    is_open_ = true;
     return true;
 }
 
@@ -207,7 +227,11 @@ bool HeapFile::ScanIterator::NextRecord(char* buffer, uint32_t buffer_size, uint
         return false;
     }
     
-    return current_page_.GetRecord(current_slot_id_, buffer, buffer_size, actual_size);
+    bool success = current_page_.GetRecord(current_slot_id_, buffer, buffer_size, actual_size);
+    if (success) {
+        current_slot_id_++;  // Move to next slot after consuming this one
+    }
+    return success;
 }
 
 bool HeapFile::ScanIterator::LoadNextPage() {
@@ -226,15 +250,17 @@ bool HeapFile::ScanIterator::LoadNextPage() {
         next_page_index = 0;  // Start with first page
     } else {
         // Find current page index and move to next
-        next_page_index = 0;  // Simplified: just start from beginning
+        next_page_index = 0;
+        bool found = false;
         for (uint32_t i = 0; i < page_count; ++i) {
             if (heap_file_->page_ids_[i] == current_page_id_) {
                 next_page_index = i + 1;
+                found = true;
                 break;
             }
         }
         
-        if (next_page_index >= page_count) {
+        if (!found || next_page_index >= page_count) {
             return false;  // No more pages
         }
     }
@@ -265,7 +291,7 @@ bool HeapFile::ScanIterator::FindNextValidSlot() {
 }
 
 HeapFile::ScanIterator* HeapFile::CreateScanIterator() {
-    return new ScanIterator(this);
+return new ScanIterator(this);
 }
 
 }

@@ -41,6 +41,13 @@ bool DiskManager::Open() {
         }
         
         InitializeNewFile();
+    } else {
+        // File exists, initialize next_page_id_ from file size
+        file_stream_.seekg(0, std::ios::end);
+        uint64_t file_size = file_stream_.tellg();
+        uint32_t page_count = static_cast<uint32_t>(file_size / Page::SIZE);
+        next_page_id_ = page_count + 1;
+        file_stream_.seekg(0, std::ios::beg);
     }
     
     return true;
@@ -68,9 +75,9 @@ bool DiskManager::ReadPage(uint32_t page_id, Page& page) {
     if (file_stream_.fail() || file_stream_.gcount() != Page::SIZE) {
         // Page doesn't exist or read failed, return empty page
         page.Reset();
-        page.SetPageId(page_id);
     }
     
+    page.SetPageId(page_id);
     return true;
 }
 
@@ -179,7 +186,28 @@ bool DiskManager::DeallocatePage(uint32_t page_id) {
 
 uint32_t DiskManager::GetPageCount() const {
     std::lock_guard<std::mutex> lock(io_mutex_);
-    return next_page_id_ - 1;
+    
+    // Calculate actual page count from file size
+    if (!file_stream_.is_open()) {
+        return next_page_id_ - 1;
+    }
+    
+    // Save current position (need const_cast because tellg/seekg are non-const)
+    auto& file_stream = const_cast<std::fstream&>(file_stream_);
+    auto current_pos = file_stream.tellg();
+    
+    // Seek to end to get file size
+    file_stream.seekg(0, std::ios::end);
+    uint64_t file_size = file_stream.tellg();
+    
+    // Restore position
+    file_stream.seekg(current_pos);
+    
+    // Calculate page count from file size
+    uint32_t page_count = static_cast<uint32_t>(file_size / Page::SIZE);
+    
+    // Return the maximum of allocated pages and actual file pages
+    return std::max(next_page_id_ - 1, page_count);
 }
 
 bool DiskManager::SeekToPage(uint32_t page_id) {

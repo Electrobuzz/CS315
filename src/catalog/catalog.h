@@ -10,6 +10,7 @@
 namespace minidb {
 
 class BufferPoolManager;
+class DiskManager;
 
 class Catalog {
 public:
@@ -20,7 +21,8 @@ public:
                      std::shared_ptr<Schema> schema,
                      page_id_t root_page_id,
                      const std::string& heap_filename,
-                     BufferPoolManager* buffer_pool);
+                     BufferPoolManager* buffer_pool,
+                     DiskManager* heap_disk_manager = nullptr);
     
     std::shared_ptr<TableInfo> GetTable(const std::string& table_name);
     bool TableExists(const std::string& table_name) const;

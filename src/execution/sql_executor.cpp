@@ -6,13 +6,9 @@ namespace minidb {
 
 // SeqScanExecutor implementation
 SeqScanExecutor::SeqScanExecutor(std::shared_ptr<TableInfo> table_info,
-                                   const std::string& heap_filename,
                                    BufferPoolManager* buffer_pool)
     : table_info_(table_info), initialized_(false) {
-    heap_file_ = std::make_unique<HeapFile>(heap_filename, buffer_pool);
-    if (!heap_file_->Open()) {
-        std::cerr << "Failed to open heap file: " << heap_filename << std::endl;
-    }
+    heap_file_ = table_info_->GetHeapFile();
 }
 
 bool SeqScanExecutor::Next(Tuple& tuple) {
@@ -48,13 +44,10 @@ bool SeqScanExecutor::Execute() {
 IndexScanExecutor::IndexScanExecutor(std::shared_ptr<TableInfo> table_info,
                                      const std::string& column_name,
                                      const Value& value,
-                                     const std::string& heap_filename,
                                      BufferPoolManager* buffer_pool)
     : table_info_(table_info), column_name_(column_name), value_(value),
       has_result_(false), executed_(false) {
-    // Get HeapFile from TableInfo (created during CreateTable)
     heap_file_ = table_info_->GetHeapFile();
-    
     // Create B+ Tree index
     index_ = std::make_unique<BPlusTree<BufferPoolManager>>(
         buffer_pool, table_info_->GetRootPageId());
@@ -107,14 +100,11 @@ IndexRangeScanExecutor::IndexRangeScanExecutor(std::shared_ptr<TableInfo> table_
                                                const std::string& column_name,
                                                const Value& lower_bound,
                                                const Value& upper_bound,
-                                               const std::string& heap_filename,
                                                BufferPoolManager* buffer_pool)
     : table_info_(table_info), column_name_(column_name),
       lower_bound_(lower_bound), upper_bound_(upper_bound),
       current_index_(0), executed_(false) {
-    // Get HeapFile from TableInfo (created during CreateTable)
     heap_file_ = table_info_->GetHeapFile();
-    
     // Create B+ Tree index
     index_ = std::make_unique<BPlusTree<BufferPoolManager>>(
         buffer_pool, table_info_->GetRootPageId());
@@ -160,12 +150,9 @@ bool IndexRangeScanExecutor::Execute() {
 // InsertExecutor implementation
 InsertExecutor::InsertExecutor(std::shared_ptr<TableInfo> table_info,
                                const std::vector<Value>& values,
-                               const std::string& heap_filename,
                                BufferPoolManager* buffer_pool)
     : table_info_(table_info), values_(values), executed_(false) {
-    // Get HeapFile from TableInfo (created during CreateTable)
     heap_file_ = table_info_->GetHeapFile();
-    
     // Create B+ Tree index
     index_ = std::make_unique<BPlusTree<BufferPoolManager>>(
         buffer_pool, table_info_->GetRootPageId());
@@ -217,9 +204,8 @@ bool InsertExecutor::Execute() {
 
 // ExecutorFactory implementation
 std::unique_ptr<SQLExecutor> ExecutorFactory::CreateExecutor(
-    PlanNode* plan,
-    const std::string& heap_filename,
-    BufferPoolManager* buffer_pool) {
+        PlanNode* plan,
+        BufferPoolManager* buffer_pool) {
     
     if (!plan) {
         return nullptr;
@@ -231,7 +217,6 @@ std::unique_ptr<SQLExecutor> ExecutorFactory::CreateExecutor(
             return std::make_unique<InsertExecutor>(
                 insert_plan->GetTableInfo(),
                 insert_plan->GetValues(),
-                heap_filename,
                 buffer_pool);
         }
         case PlanType::INDEX_SCAN: {
@@ -240,7 +225,6 @@ std::unique_ptr<SQLExecutor> ExecutorFactory::CreateExecutor(
                 index_scan_plan->GetTableInfo(),
                 index_scan_plan->GetColumnName(),
                 index_scan_plan->GetValue(),
-                heap_filename,
                 buffer_pool);
         }
         case PlanType::INDEX_RANGE_SCAN: {
@@ -250,10 +234,14 @@ std::unique_ptr<SQLExecutor> ExecutorFactory::CreateExecutor(
                 index_range_scan_plan->GetColumnName(),
                 index_range_scan_plan->GetLowerBound(),
                 index_range_scan_plan->GetUpperBound(),
-                heap_filename,
                 buffer_pool);
         }
-        case PlanType::SEQ_SCAN:
+        case PlanType::SEQ_SCAN: {
+            auto seq_scan_plan = static_cast<SeqScanPlan*>(plan);
+            return std::make_unique<SeqScanExecutor>(
+                seq_scan_plan->GetTableInfo(),
+                buffer_pool);
+        }
         default:
             return nullptr;
     }

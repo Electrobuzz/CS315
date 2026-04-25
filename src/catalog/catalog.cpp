@@ -12,7 +12,8 @@ bool Catalog::CreateTable(const std::string& table_name,
                           std::shared_ptr<Schema> schema,
                           page_id_t root_page_id,
                           const std::string& heap_filename,
-                          BufferPoolManager* buffer_pool) {
+                          BufferPoolManager* buffer_pool,
+                          DiskManager* heap_disk_manager) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (tables_.find(table_name) != tables_.end()) {
@@ -22,8 +23,13 @@ bool Catalog::CreateTable(const std::string& table_name,
     table_id_t table_id = next_table_id_++;
     auto table_info = std::make_shared<TableInfo>(table_id, table_name, schema, root_page_id);
     
-    // Create HeapFile for this table
-    auto heap_file = new HeapFile(heap_filename, buffer_pool);
+    // Create shared HeapFile for this table
+    HeapFile* heap_file;
+    if (heap_disk_manager) {
+        heap_file = new HeapFile(heap_disk_manager, buffer_pool);
+    } else {
+        heap_file = new HeapFile(heap_filename, buffer_pool);
+    }
     if (!heap_file->Open()) {
         delete heap_file;
         return false;

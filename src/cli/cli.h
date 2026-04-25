@@ -44,6 +44,11 @@ private:
     std::unique_ptr<LogManager> log_manager_;
     std::unique_ptr<BufferPoolManager> buffer_pool_;
     
+    // Separate DiskManager and BufferPoolManager for HeapFile
+    std::unique_ptr<DiskManager> heap_disk_manager_;
+    std::unique_ptr<BufferPoolManager> heap_buffer_pool_;
+    std::unique_ptr<HeapFile> heap_file_instance_;
+    
     static constexpr uint32_t BUFFER_POOL_SIZE = 100;
 };
 

@@ -16,6 +16,10 @@ DatabaseCLI::DatabaseCLI(const std::string& db_file, const std::string& log_file
     // Use separate file for HeapFile data to avoid conflicts with B+ Tree index pages
     heap_file_ = db_file + "_heap";
     
+    // Create separate DiskManager and BufferPoolManager for HeapFile
+    heap_disk_manager_ = std::make_unique<DiskManager>(heap_file_);
+    heap_buffer_pool_ = std::make_unique<BufferPoolManager>(BUFFER_POOL_SIZE, heap_disk_manager_.get());
+    
     // Verify persistence on startup
     VerifyPersistence();
 }
@@ -80,7 +84,7 @@ void DatabaseCLI::ExecuteCommand(const std::string& command) {
         auto schema = std::make_shared<Schema>(columns);
         
         Catalog& catalog = Catalog::GetInstance();
-        if (catalog.CreateTable(create_stmt->table_name, schema, INVALID_PAGE_ID, heap_file_, buffer_pool_.get())) {
+        if (catalog.CreateTable(create_stmt->table_name, schema, INVALID_PAGE_ID, heap_file_, heap_buffer_pool_.get(), heap_disk_manager_.get())) {
             std::cout << "OK" << std::endl;
         } else {
             PrintError("Failed to create table");
@@ -109,8 +113,8 @@ void DatabaseCLI::ExecuteCommand(const std::string& command) {
     
     // Execute
     Catalog& catalog = Catalog::GetInstance();
-    // Use heap_file_ for all operations to avoid page ID conflicts with B+ Tree
-    auto executor = ExecutorFactory::CreateExecutor(plan.get(), heap_file_, buffer_pool_.get());
+    // Use buffer_pool_ for B+ Tree operations
+    auto executor = ExecutorFactory::CreateExecutor(plan.get(), buffer_pool_.get());
     if (!executor) {
         PrintError("Failed to create executor");
         return;

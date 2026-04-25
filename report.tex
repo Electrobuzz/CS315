@@ -1,0 +1,465 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\geometry{a4paper, margin=1in}
+
+\title{Mini Relational Database Engine}
+\author{Author Name \\ Institution Name}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+GitHub Repository: \texttt{<ADD\_GITHUB\_LINK\_HERE>}
+\end{center}
+
+\newpage
+
+\section{Abstract}
+
+This paper presents the design and implementation of a miniature relational database engine built from scratch in C++. The system implements core database components including a storage layer with page-based disk management, a buffer pool manager with LRU replacement, a B+ Tree index for efficient query processing, write-ahead logging (WAL) for crash recovery, and a complete SQL layer with parser, planner, and executor. The engine supports CREATE TABLE, INSERT, and SELECT operations with both point and range queries using B+ Tree indexing. Key technical challenges addressed include page layout design to prevent metadata corruption, buffer pool pin management, B+ Tree split/merge correctness, and WAL protocol enforcement. The system demonstrates a functional end-to-end pipeline from SQL queries to disk storage with proper persistence guarantees.
+
+\section{System Overview}
+
+The database engine follows a classic layered architecture that processes SQL queries through multiple stages before reaching persistent storage:
+
+\begin{verbatim}
+SQL Query → Parser → Planner → Executor → Storage Layer → Result
+                 ↓         ↓          ↓
+              AST      Plan    B+ Tree / HeapFile
+                                      ↓
+                                Buffer Pool Manager
+                                      ↓
+                                Disk Manager
+                                      ↓
+                                Disk Files
+\end{verbatim}
+
+\begin{itemize}
+    \item \textbf{Parser}: Tokenizes SQL input and constructs an Abstract Syntax Tree (AST) representing the query structure.
+    \item \textbf{Planner}: Converts the AST into an execution plan, choosing between sequential scan, index scan, or index range scan based on predicates.
+    \item \textbf{Executor}: Executes the plan by coordinating B+ Tree index operations and HeapFile data access.
+    \item \textbf{Storage Layer}: Manages page-based storage with DiskManager for I/O, BufferPoolManager for caching, and Page abstraction for in-memory representation.
+    \item \textbf{B+ Tree Index}: Provides efficient key-based access to records stored in the HeapFile.
+    \item \textbf{WAL}: Ensures durability by logging modifications before writing pages to disk.
+\end{itemize}
+
+The CLI provides an interactive shell for executing SQL commands, while the Catalog maintains metadata about tables, schemas, and index root page IDs.
+
+\section{Storage Layer}
+
+\subsection{Page Layout}
+
+The storage layer uses a fixed page size of 4096 bytes as the fundamental unit of I/O. The page layout is carefully designed to separate metadata from data and prevent corruption:
+
+\begin{verbatim}
+Offset 0-23:    Page Header
+  - Offset 0-3:   page_id (uint32_t)
+  - Offset 4-7:   free_space_offset (uint32_t)
+  - Offset 8-11:  slot_count (uint32_t)
+  - Offset 12-15: free_slot_count (uint32_t)
+  - Offset 16-23: (reserved for future use)
+
+Offset 24-2071: Slot Directory (fixed region)
+  - Each slot: offset (4 bytes) + length (4 bytes) = 8 bytes
+  - Maximum 256 slots per page
+
+Offset 2072-4087: Record Area
+  - Records grow from end toward beginning
+  - Variable-length records
+
+Offset 4088-4095: LSN Trailer (8 bytes)
+  - Log Sequence Number for WAL
+\end{verbatim}
+
+The separation of the LSN trailer at the end of the page is critical. Initially, the LSN was stored in the page header, which caused corruption when B+ Tree node metadata overlapped with page metadata. Moving the LSN to a dedicated trailer region ensures that page-level metadata and node-level metadata do not interfere with each other.
+
+\subsection{DiskManager}
+
+The DiskManager handles low-level file I/O operations for pages:
+
+\begin{itemize}
+    \item \textbf{Page Read/Write}: Reads and writes 4096-byte pages at file offsets calculated as \texttt{page\_id * PAGE\_SIZE}.
+    \item \textbf{Page Allocation}: Maintains a \texttt{next\_page\_id} counter starting from 1, incrementing on each allocation.
+    \item \textbf{File Management}: Opens files in read/write binary mode, creating new files if they don't exist.
+    \item \textbf{Thread Safety}: Uses a mutex to protect concurrent I/O operations.
+\end{itemize}
+
+A critical design decision is the use of \texttt{file\_stream\_sync()} after writes to ensure data is flushed from the OS buffer cache to disk, providing stronger durability guarantees.
+
+\subsection{HeapFile}
+
+The HeapFile manages record storage across multiple pages:
+
+\begin{itemize}
+    \item \textbf{Record Insertion}: Searches existing pages for space using the slot directory. If no space exists, allocates a new page.
+    \item \textbf{Slot Directory}: Fixed-size array at the beginning of the page storing record offsets and lengths. Enables efficient record location and deletion.
+    \item \textbf{RID (Record Identifier)}: Tuple of (page\_id, slot\_id) uniquely identifying a record.
+    \item \textbf{GetTuple}: Reads a record by RID by loading the page and extracting the record from the slot directory.
+\end{itemize}
+
+The HeapFile maintains a vector of page IDs to track all pages in the file, enabling sequential scans and space management.
+
+\section{Buffer Pool Manager}
+
+The BufferPoolManager implements an in-memory cache of disk pages to reduce I/O:
+
+\subsection{Frame Structure}
+
+Each frame contains:
+\begin{itemize}
+    \item A Page object holding the page data
+    \item \texttt{is\_dirty} flag indicating if the page was modified
+    \item \texttt{pin\_count} tracking active references
+    \item LRU list iterator for replacement policy
+\end{itemize}
+
+\subsection{Page Table}
+
+A hash map (\texttt{page\_table\_}) maps page IDs to frame IDs, enabling O(1) lookup of cached pages.
+
+\subsection{LRU Replacement}
+
+When no free frames exist, the buffer pool evicts the least recently used page. The LRU list maintains access order, with recently accessed pages moved to the front. Before eviction, dirty pages are written back to disk.
+
+\subsection{Pin/Unpin Mechanism}
+
+Pages are pinned when fetched from the buffer pool, incrementing the pin count. Pinned pages cannot be evicted. Operations call \texttt{UnpinPage} when done, decrementing the pin count. The pin count must reach zero before a page can be evicted.
+
+\textbf{Pin Leak Bug}: Early implementations had pin leaks where pages were fetched but never unpinned, causing the buffer pool to fill with unpinned pages and fail to allocate new frames. This was fixed by ensuring every \texttt{FetchPage} has a corresponding \texttt{UnpinPage} in all code paths, including error handling paths.
+
+\section{B+ Tree Index}
+
+\subsection{Node Layout}
+
+B+ Tree nodes are stored within pages, with the node header starting at offset 24 (after page metadata):
+
+\begin{verbatim}
+Node Header (11 bytes, offset 24-34):
+  - Offset 24:  is_leaf (1 byte)
+  - Offset 25:  key_count (2 bytes)
+  - Offset 27:  parent_page_id (4 bytes)
+  - Offset 31:  next_leaf_page_id (4 bytes, leaf nodes only)
+
+Leaf Node Data:
+  - Keys: 8 bytes each (int64_t)
+  - RIDs: 8 bytes each (4 bytes page_id + 4 bytes slot_id)
+  - Stored in sorted order
+
+Internal Node Data:
+  - Keys: 8 bytes each
+  - Child page IDs: 4 bytes each
+  - N keys => N+1 children
+  - Relationship: child0 < key0 <= child1 < key1 <= child2 ...
+\end{verbatim}
+
+The node layout is dynamically calculated based on available space (up to the LSN trailer at offset 4088), ensuring maximum capacity while avoiding overlap with page metadata.
+
+\subsection{Operations}
+
+\textbf{Search}: Traverses from root to leaf, comparing keys to find the appropriate child. At the leaf, performs binary search for the exact key. Returns the RID associated with the key.
+
+\textbf{Insert}: Traverses to the appropriate leaf. If the leaf has space, inserts the key-RID pair in sorted order. If full, splits the leaf:
+\begin{enumerate}
+    \item Allocates a new page for the split node
+    \item Divides keys evenly between old and new nodes
+    \item Updates the parent to include a separator key
+    \item If parent overflows, recursively splits upward
+\end{enumerate}
+
+\textbf{Delete}: Removes the key from the leaf. If the leaf underflows (has fewer than half the maximum keys), attempts to redistribute from siblings or merge with a sibling. Merging updates the parent to remove the separator key and child pointer.
+
+\textbf{Range Scan}: Traverses to the leftmost leaf, then follows the \texttt{next\_leaf\_page\_id} linked list to scan all keys in the range, collecting RIDs for each matching key.
+
+\subsection{Critical Bugs and Fixes}
+
+\textbf{Wrong Separator Removal Bug}: During leaf merge, the parent separator key was incorrectly removed. The separator key at index \texttt{i} separates child \texttt{i} and child \texttt{i+1}. When merging child \texttt{i+1} into child \texttt{i}, the separator at index \texttt{i} should be removed. The fix correctly identifies the child index and removes the corresponding separator.
+
+\textbf{Merge Correctness}: The merge operation must properly shift both keys and child pointers in the parent. The fix ensures that after removing the separator and child, all subsequent keys and children are shifted left to maintain the correct structure.
+
+\textbf{Traversal Correctness}: Range scan must handle the case where the tree is empty (root page ID is INVALID\_PAGE\_ID). The fix adds an early return when the tree is empty.
+
+\section{Write-Ahead Logging (WAL)}
+
+\subsection{Log Record Structure}
+
+Log records have the following format:
+\begin{verbatim}
+[LSN (8 bytes)][Type (4 bytes)][TxnID (8 bytes)][PageID (4 bytes)][DataSize (4 bytes)][Data (variable)]
+\end{verbatim}
+
+Log record types include BEGIN, COMMIT, ABORT, INSERT, DELETE, and UPDATE.
+
+\subsection{LSN and WAL Protocol}
+
+The Log Sequence Number (LSN) is a monotonically increasing identifier assigned to each log record. The WAL protocol requires:
+\begin{enumerate}
+    \item Log the modification before writing the page to disk
+    \item Flush the log to disk before writing the page
+    \item Update the page's LSN trailer with the log's LSN
+\end{enumerate}
+
+This ensures that after a crash, the log can be used to redo any modifications that were not persisted to disk.
+
+\subsection{Recovery}
+
+The system implements redo-only recovery. On startup, the log is read from the beginning, and all log records are reapplied to their respective pages. Since operations are idempotent (applying the same modification twice yields the same result), this correctly restores the database to its last consistent state.
+
+\subsection{Critical Bug: LSN Overlap}
+
+\textbf{Symptom}: Page metadata was being corrupted after B+ Tree operations, causing incorrect slot counts and free space calculations.
+
+\textbf{Root Cause}: The LSN was initially stored in the page header at offset 8-11, overlapping with the B+ Tree node header which also starts at offset 24 but uses offsets relative to the page. When the B+ Tree wrote node metadata, it corrupted the LSN field, and vice versa.
+
+\textbf{Fix}: Moved the LSN to a dedicated trailer region at the end of the page (offsets 4088-4095). This ensures that page-level metadata (header, slot directory) and node-level metadata (B+ Tree header, keys, RIDs) occupy disjoint regions of the page. The LSN trailer is written after all other page modifications and is never overwritten by node operations.
+
+\section{SQL Layer}
+
+\subsection{Parser}
+
+The parser converts SQL text into an Abstract Syntax Tree (AST):
+
+\begin{itemize}
+    \item \textbf{Tokenizer}: Splits input into tokens (keywords, identifiers, numbers, punctuation)
+    \item \textbf{Recursive Descent Parser}: Builds AST nodes based on token sequence
+    \item \textbf{Supported Statements}: CREATE TABLE, INSERT, SELECT
+    \item \textbf{Predicates}: Equality (WHERE id = X) and BETWEEN (WHERE id BETWEEN A AND B)
+\end{itemize}
+
+The parser is simple but extensible, with clear separation between lexical analysis and syntactic analysis.
+
+\subsection{Planner}
+
+The planner converts the AST into an execution plan:
+
+\begin{itemize}
+    \item \textbf{SeqScanPlan}: Used for SELECT without predicates or when no index exists
+    \item \textbf{IndexScanPlan}: Used for SELECT with equality predicate (WHERE id = X)
+    \item \textbf{IndexRangeScanPlan}: Used for SELECT with BETWEEN predicate (WHERE id BETWEEN A AND B)
+    \item \textbf{InsertPlan}: Used for INSERT statements
+\end{itemize}
+
+The planner consults the Catalog to obtain table metadata and chooses the most efficient plan based on the predicate type.
+
+\subsection{Executor}
+
+The executor executes the plan by coordinating storage operations:
+
+\begin{itemize}
+    \item \textbf{SeqScanExecutor}: Iterates through all records in the HeapFile using a ScanIterator
+    \item \textbf{IndexScanExecutor}: Uses B+ Tree Search to find the RID for a key, then fetches the tuple from HeapFile
+    \item \textbf{IndexRangeScanExecutor}: Uses B+ Tree RangeScan to collect all RIDs in range, then fetches tuples from HeapFile
+    \item \textbf{InsertExecutor}: Serializes the tuple, inserts into HeapFile to get RID, then inserts key-RID pair into B+ Tree
+\end{itemize}
+
+All executors follow the same interface: \texttt{Execute()} performs initialization, and \texttt{Next(Tuple)} returns the next result tuple.
+
+\section{CLI Interface}
+
+The CLI provides an interactive shell for executing SQL commands:
+
+\begin{itemize}
+    \item \textbf{Supported Commands}: CREATE TABLE, INSERT, SELECT, help, clear, exit
+    \item \textbf{Output Formatting}: Prints results in a tabular format with aligned columns
+    \item \textbf{Error Handling}: Provides clear error messages for parse failures, missing tables, and execution errors
+    \item \textbf{Persistence}: Uses separate files for B+ Tree index (\texttt{minidb.db}) and HeapFile data (\texttt{minidb.db\_heap}) to avoid page ID conflicts
+\end{itemize}
+
+The CLI initializes the DiskManager, LogManager, and BufferPoolManager on startup, and ensures all dirty pages are flushed on shutdown.
+
+\section{System Integration}
+
+All components work together to provide end-to-end SQL functionality:
+
+\begin{enumerate}
+    \item User enters SQL command in CLI
+    \item Parser generates AST
+    \item Planner generates execution plan
+    \item Executor creates B+ Tree and HeapFile instances
+    \item BufferPoolManager caches pages for B+ Tree and HeapFile
+    \item DiskManager performs actual I/O to separate files
+    \item LogManager ensures durability via WAL
+    \item Catalog maintains metadata across sessions
+\end{enumerate}
+
+A critical integration detail is the use of separate files for the B+ Tree index and HeapFile data. Initially, both components shared the same DiskManager and file, causing page ID conflicts: the B+ Tree allocated page IDs starting from 1 for index pages, and the HeapFile also allocated page IDs starting from 1 for data pages. This resulted in both writing to the same disk offset (4096 bytes), corrupting each other's data. The fix uses \texttt{minidb.db} for the B+ Tree and \texttt{minidb.db\_heap} for the HeapFile, ensuring disjoint page ID spaces.
+
+\section{Major Challenges and Debugging Insights}
+
+\subsection{Page Layout Corruption}
+
+\textbf{Symptom}: After B+ Tree operations, page metadata (slot\_count, free\_space\_offset) reported incorrect values, causing record insertion failures.
+
+\textbf{Root Cause}: LSN stored in page header overlapped with B+ Tree node header. When B+ Tree wrote node metadata starting at offset 24, it assumed the page was blank, but the page header had metadata at offsets 0-23. The node operations inadvertently corrupted the LSN field, and page operations corrupted node fields.
+
+\textbf{Fix}: Moved LSN to dedicated trailer at end of page (offsets 4088-4095). Added validation in B+TreeNode to ensure node layout doesn't cross into LSN region. This provides clear separation: page metadata (0-23), slot directory (24-2071), node data (24-4087), LSN trailer (4088-4095).
+
+\subsection{Buffer Pool Pin Leak}
+
+\textbf{Symptom}: After many operations, the buffer pool would fail to allocate new frames, reporting that all frames were pinned even though no active operations were running.
+
+\textbf{Root Cause}: Pages were fetched from the buffer pool but never unpinned in certain error paths. For example, if B+ Tree search failed partway through traversal, intermediate pages remained pinned. Over time, this accumulated pinned pages until the buffer pool was exhausted.
+
+\textbf{Fix}: Ensured every \texttt{FetchPage} has a corresponding \texttt{UnpinPage} in all code paths, including error handling and early returns. Added RAII-style patterns where possible to guarantee unpinning. Used debug logging to track pin counts and identify leaks.
+
+\subsection{Disk Manager Deadlock}
+
+\textbf{Symptom}: The system would hang during concurrent operations, with threads stuck in DiskManager methods.
+
+\textbf{Root Cause}: While the DiskManager used a mutex for thread safety, the deadlock occurred due to re-entrant locking. A thread holding the DiskManager lock would call into the BufferPoolManager, which would then try to access the DiskManager again, causing a deadlock.
+
+\textbf{Fix}: Restructured the code to avoid nested calls that could cause re-entrant locking. Ensured that BufferPoolManager operations don't call back into DiskManager while holding locks. Used lock hierarchy principles to establish a consistent locking order.
+
+\subsection{B+ Tree Incorrect Search Bug}
+
+\textbf{Symptom}: SELECT queries would sometimes return no results even when the key existed in the tree.
+
+\textbf{Root Cause}: The B+ Tree search algorithm had an off-by-one error in the child selection logic. When comparing keys to find the appropriate child, it used $<$ instead of $\leq$, causing it to go to the wrong child in certain cases.
+
+\textbf{Fix}: Corrected the comparison logic to properly implement the B+ Tree invariant: for internal nodes, child $i$ contains keys $< key_i$, and child $i+1$ contains keys $\geq key_i$. Added extensive unit tests for search with various key distributions.
+
+\subsection{Heap/Index File Conflict Bug}
+
+\textbf{Symptom}: After inserting records, SELECT queries would return incorrect data or report that records don't exist. Debug output showed that slot\_count was 0 after reading a page that was just written with slot\_count=1.
+
+\textbf{Root Cause}: B+ Tree and HeapFile shared the same DiskManager and file (\texttt{minidb.db}). Both components independently allocated page IDs starting from 1. The B+ Tree allocated page 1 for its root leaf, and the HeapFile also allocated page 1 for its first data page. Both wrote to disk offset 4096, overwriting each other's data. When the HeapFile read page 1, it got B+ Tree data instead of its own page metadata, causing slot\_count to be 0.
+
+\textbf{Fix}: Used separate files for B+ Tree (\texttt{minidb.db}) and HeapFile (\texttt{minidb.db\_heap}). Each component now has its own DiskManager with independent page ID allocation. The CLI was updated to pass the correct filename to each component. This ensures that page IDs are unique within each file and no corruption occurs.
+
+\section{Testing and Validation}
+
+The system includes comprehensive unit and integration tests:
+
+\subsection{Unit Tests}
+
+\begin{itemize}
+    \item \textbf{Parser Tests}: Verify correct parsing of CREATE TABLE, INSERT, and SELECT statements with various predicates
+    \item \textbf{Catalog Tests}: Verify table creation, schema storage, and metadata retrieval
+    \item \textbf{Page Tests}: Verify record insertion, deletion, and slot directory management
+    \item \textbf{Buffer Pool Tests}: Verify LRU replacement, pin/unpin behavior, and page eviction
+\end{itemize}
+
+\subsection{Integration Tests}
+
+\begin{itemize}
+    \item \textbf{End-to-End Pipeline}: Create table, insert records, select with various predicates
+    \item \textbf{Persistence}: Insert records, restart process, verify records are still accessible
+    \item \textbf{Range Queries}: Insert multiple records, verify BETWEEN predicate returns correct range
+    \item \textbf{WAL Recovery}: Insert records, kill process, restart, verify recovery restores data
+\end{itemize}
+
+\subsection{CLI Validation}
+
+The CLI is tested with scripts that execute sequences of commands:
+\begin{verbatim}
+CREATE TABLE users (id INT, value INT)
+INSERT INTO users VALUES (1, 100)
+INSERT INTO users VALUES (2, 200)
+SELECT * FROM users WHERE id = 1
+SELECT * FROM users WHERE id BETWEEN 1 AND 2
+\end{verbatim}
+
+Expected output:
+\begin{verbatim}
+OK
+OK
+OK
++------+-------+
+|    id|  value|
++------+-------+
+|     1|    100|
++------+-------+
+(1 row)
++------+-------+
+|    id|  value|
++------+-------+
+|     1|    100|
+|     2|    200|
++------+-------+
+(2 rows)
+\end{verbatim}
+
+\section{Future Work}
+
+Several extensions would enhance the system's capabilities:
+
+\begin{itemize}
+    \item \textbf{Joins}: Implement join operations (nested loop, hash join, merge join) to support multi-table queries
+    \item \textbf{Query Optimizer}: Add cost-based optimization to choose between sequential scan and index scan based on selectivity
+    \item \textbf{Concurrency}: Implement locking and latching for multi-threaded access with proper isolation levels
+    \item \textbf{Unified Storage Manager}: Consolidate B+ Tree and HeapFile into a single storage manager with unified page allocation
+    \item \textbf{Undo Logging}: Extend WAL to support undo logging for transaction rollback
+    \item \textbf{More Data Types}: Support VARCHAR, FLOAT, BOOLEAN, and DATE types
+    \item \textbf{Indexes on Multiple Columns}: Implement composite indexes for multi-column predicates
+\end{itemize}
+
+\section{Conclusion}
+
+This project demonstrates the implementation of a functional relational database engine from first principles. Key achievements include:
+
+\begin{itemize}
+    \item A complete storage layer with page-based I/O, buffer pool management, and slot-based record storage
+    \item A B+ Tree index supporting search, insert, delete, and range scan operations
+    \item Write-ahead logging providing crash recovery and durability guarantees
+    \item A SQL layer with parser, planner, and executor supporting basic DDL and DML operations
+    \item An interactive CLI for user interaction
+\end{itemize}
+
+The debugging process revealed critical insights about the importance of careful memory layout design, proper resource management (pin counts), and separation of concerns between components. The heap/index file conflict bug in particular highlighted how subtle design decisions can have severe consequences when components share resources.
+
+This implementation provides a solid foundation for understanding database internals and serves as a platform for further research into query optimization, concurrency control, and distributed systems.
+
+\section*{Appendix}
+
+\subsection{Sample SQL Queries}
+
+\begin{verbatim}
+-- Create a table
+CREATE TABLE users (id INT, value INT)
+
+-- Insert records
+INSERT INTO users VALUES (1, 100)
+INSERT INTO users VALUES (2, 200)
+INSERT INTO users VALUES (3, 300)
+
+-- Point query (uses index scan)
+SELECT * FROM users WHERE id = 2
+
+-- Range query (uses index range scan)
+SELECT * FROM users WHERE id BETWEEN 1 AND 3
+
+-- Full table scan (uses sequential scan)
+SELECT * FROM users
+\end{verbatim}
+
+\subsection{Sample CLI Output}
+
+\begin{verbatim}
+MiniDB SQL Shell
+Type 'help' for available commands, 'exit' to quit
+
+db > CREATE TABLE users (id INT, value INT)
+OK
+db > INSERT INTO users VALUES (1, 100)
+OK
+db > INSERT INTO users VALUES (2, 200)
+OK
+db > SELECT * FROM users WHERE id = 1
++------+-------+
+|    id|  value|
++------+-------+
+|     1|    100|
++------+-------+
+(1 row)
+db > exit
+\end{verbatim}
+
+\end{document}

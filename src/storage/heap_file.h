@@ -13,6 +13,7 @@ namespace minidb {
 class HeapFile {
 public:
     HeapFile(const std::string& filename, BufferPoolManager* buffer_pool = nullptr);
+    HeapFile(DiskManager* disk_manager, BufferPoolManager* buffer_pool = nullptr);
     ~HeapFile();
     
     // File operations
@@ -52,9 +53,11 @@ public:
     uint32_t GetRecordCount() const;
 
 private:
-    std::unique_ptr<DiskManager> disk_manager_;
+    DiskManager* disk_manager_;  // Can be owned or external
+    bool owns_disk_manager_;  // Whether we own the disk_manager_
     BufferPoolManager* buffer_pool_;  // Not owned, for GetTuple operations
     uint32_t record_count_;
+    bool is_open_;
     
     // Internal helper methods
     bool FindSpaceInExistingPages(const char* record_data, uint32_t record_size, RID& rid);

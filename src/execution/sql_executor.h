@@ -25,7 +25,6 @@ public:
 class SeqScanExecutor : public SQLExecutor {
 public:
     SeqScanExecutor(std::shared_ptr<TableInfo> table_info,
-                    const std::string& heap_filename,
                     BufferPoolManager* buffer_pool);
     
     bool Next(Tuple& tuple) override;
@@ -33,7 +32,7 @@ public:
     
 private:
     std::shared_ptr<TableInfo> table_info_;
-    std::unique_ptr<HeapFile> heap_file_;
+    HeapFile* heap_file_;
     std::unique_ptr<HeapFile::ScanIterator> scan_iterator_;
     bool initialized_;
 };
@@ -44,7 +43,6 @@ public:
     IndexScanExecutor(std::shared_ptr<TableInfo> table_info,
                       const std::string& column_name,
                       const Value& value,
-                      const std::string& heap_filename,
                       BufferPoolManager* buffer_pool);
     
     bool Next(Tuple& tuple) override;
@@ -68,7 +66,6 @@ public:
                           const std::string& column_name,
                           const Value& lower_bound,
                           const Value& upper_bound,
-                          const std::string& heap_filename,
                           BufferPoolManager* buffer_pool);
     
     bool Next(Tuple& tuple) override;
@@ -91,7 +88,6 @@ class InsertExecutor : public SQLExecutor {
 public:
     InsertExecutor(std::shared_ptr<TableInfo> table_info,
                    const std::vector<Value>& values,
-                   const std::string& heap_filename,
                    BufferPoolManager* buffer_pool);
     
     bool Next(Tuple& tuple) override;
@@ -110,7 +106,6 @@ class ExecutorFactory {
 public:
     static std::unique_ptr<SQLExecutor> CreateExecutor(
         PlanNode* plan,
-        const std::string& heap_filename,
         BufferPoolManager* buffer_pool);
 };
 
